@@ -25,10 +25,10 @@ export const BudgetResult = ({ category, result }: BudgetResultProps) => (
     </div>
 
     <div className="space-y-4">
-      {Object.entries(result).map(([key, items]) => (
+      {(Object.entries(result) as [keyof BudgetResultJson, string[]][]).map(([key, items]) => (
         <div key={key} className="rounded-xl border border-gray-100 p-4">
           <h3 className="mb-2 font-semibold text-ink">
-            {sectionLabels[key as keyof BudgetResultJson]}
+            {sectionLabels[key]}
           </h3>
           <ul className="space-y-1 text-sm text-gray-700">
             {items.map((item, index) => (

@@ -78,8 +78,17 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
 
   return (
     <div className="space-y-4">
-      {feedback && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{feedback}</p>}
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {feedback && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          {feedback}
+        </p>
+      )}
+
+      {error && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       {budgets.map((budget) => {
         const expanded = expandedId === budget.id;
@@ -95,10 +104,14 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                   <span className="rounded-full bg-primary px-3 py-1 uppercase tracking-wide text-white">
                     {budget.category}
                   </span>
+
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-primary">
                     Complexidade: {budget.complexity}
                   </span>
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-700">Área: {budget.area} m²</span>
+
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-700">
+                    Área: {budget.area} m²
+                  </span>
                 </div>
 
                 <p className="text-sm text-gray-500">
@@ -108,7 +121,9 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                   })}
                 </p>
 
-                <p className="text-sm leading-relaxed text-gray-700">{budget.service_description}</p>
+                <p className="text-sm leading-relaxed text-gray-700">
+                  {budget.service_description}
+                </p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -120,6 +135,7 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                 >
                   {expanded ? 'Ocultar detalhes' : 'Ver detalhes'}
                 </Button>
+
                 <Button
                   type="button"
                   variant="danger"
@@ -134,13 +150,17 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
 
             {expanded && (
               <div className="mt-4 grid gap-3 border-t border-gray-100 pt-4 md:grid-cols-2">
-                {Object.entries(budget.result_json).map(([section, entries]) => (
+                {(Object.entries(budget.result_json) as [
+                  keyof BudgetRecord['result_json'],
+                  string[]
+                ][]).map(([section, entries]) => (
                   <div key={section} className="rounded-xl bg-gray-50 p-3">
                     <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-primary">
-                      {sectionLabels[section as keyof BudgetRecord['result_json']]}
+                      {sectionLabels[section]}
                     </h3>
+
                     <ul className="space-y-1 text-sm text-gray-700">
-                      {entries.map((item, idx) => (
+                      {entries.map((item: string, idx: number) => (
                         <li key={`${section}-${idx}`} className="flex gap-2">
                           <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />
                           <span>{item}</span>

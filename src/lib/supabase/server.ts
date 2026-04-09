@@ -17,13 +17,13 @@ export const createClient = async () => {
             name: string;
             value: string;
             options?: Parameters<typeof cookieStore.set>[2];
-          }>,
+          }>
         ) {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });
         },
       },
-    },
+    }
   );
 };

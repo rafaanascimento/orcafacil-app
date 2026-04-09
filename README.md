@@ -110,4 +110,6 @@ public/images/
 - Proteção de rota feita via `middleware.ts` + validações no server.
 - Geração de orçamento funciona localmente por templates em `src/data/templates`.
 - A dashboard salva o orçamento no Supabase com feedback amigável de sucesso/erro.
+- Resultado de orçamento com ação de cópia em texto estruturado e limpeza rápida.
+- Histórico com visual expandível e exclusão segura por item (escopo do usuário autenticado).
 - Interface mobile-first e responsiva para desktop e mobile web.

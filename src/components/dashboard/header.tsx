@@ -21,34 +21,31 @@ export const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
   };
 
   return (
-    <header className="rounded-2xl bg-gradient-to-r from-primary to-secondary p-5 text-white shadow-lg sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+    <header className="rounded-3xl border border-blue-100 bg-gradient-to-r from-primary via-secondary to-blue-700 p-5 text-white shadow-lg sm:p-7">
+      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
           <SafeImage
             src="/images/branding/logo-icon.png"
             alt="Logo OrçaFácil"
-            className="h-10 w-10 rounded-lg bg-white/15 object-contain p-1"
-            fallbackClassName="h-10 w-10 rounded-lg bg-white/20 text-xs"
+            className="h-12 w-12 rounded-xl bg-white/15 object-contain p-1.5"
+            fallbackClassName="h-12 w-12 rounded-xl bg-white/25 text-sm"
             fallbackLabel="OF"
           />
           <div>
-            <h1 className="text-xl font-semibold">OrçaFácil</h1>
-            <p className="text-sm text-blue-100">Olá, {userEmail}</p>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-blue-100">Painel técnico</p>
+            <h1 className="text-2xl font-bold leading-tight">OrçaFácil</h1>
+            <p className="text-sm text-blue-100">Bem-vindo, {userEmail}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/history"
-            className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+            className="rounded-xl border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
           >
             Histórico
           </Link>
-          <Button
-            onClick={handleLogout}
-            variant="ghost"
-            className="w-auto bg-white/10 text-white hover:bg-white/20"
-          >
+          <Button onClick={handleLogout} variant="ghost" className="w-auto border border-white/30 text-white hover:bg-white/20">
             Sair
           </Button>
         </div>

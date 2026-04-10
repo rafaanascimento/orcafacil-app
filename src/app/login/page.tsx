@@ -1,17 +1,21 @@
 import { redirect } from 'next/navigation';
 import { LoginForm } from '@/components/auth/login-form';
 import { SafeImage } from '@/components/ui/safe-image';
-import { createClient } from '@/lib/supabase/server';
+import { getSafeUser } from '@/lib/supabase/server';
 
-export default async function LoginPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+interface LoginPageProps {
+  searchParams?: Promise<{ reason?: string | string[] }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const user = await getSafeUser();
 
   if (user) {
     redirect('/dashboard');
   }
+
+  const params = await searchParams;
+  const reason = Array.isArray(params?.reason) ? params?.reason[0] : params?.reason;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-primary via-secondary to-blue-900 px-4 py-8">
@@ -48,7 +52,7 @@ export default async function LoginPage() {
               fallbackClassName="h-12 w-fit rounded-lg bg-white/20 px-4"
             />
           </div>
-          <LoginForm />
+          <LoginForm initialSessionReason={reason} />
         </div>
       </div>
     </main>

@@ -2,16 +2,13 @@ import { redirect } from 'next/navigation';
 import { BudgetForm } from '@/components/dashboard/budget-form';
 import { FeatureCards } from '@/components/dashboard/feature-cards';
 import { DashboardHeader } from '@/components/dashboard/header';
-import { createClient } from '@/lib/supabase/server';
+import { getSafeUser } from '@/lib/supabase/server';
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeUser();
 
   if (!user) {
-    redirect('/login');
+    redirect('/login?reason=session_expired');
   }
 
   return (

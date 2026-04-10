@@ -25,6 +25,12 @@ const complexityLabels: Record<BudgetRecord['complexity'], string> = {
   alta: 'Alta',
 };
 
+const money = (value: number) =>
+  value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+
 export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
   const [budgets, setBudgets] = useState(initialBudgets);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -53,11 +59,7 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
       return;
     }
 
-    const { error: deleteError } = await supabase
-      .from('budgets')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+    const { error: deleteError } = await supabase.from('budgets').delete().eq('id', id).eq('user_id', user.id);
 
     if (deleteError) {
       setError('Não foi possível excluir o orçamento agora.');
@@ -84,17 +86,9 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
 
   return (
     <div className="space-y-3.5 sm:space-y-4">
-      {feedback && (
-        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-          {feedback}
-        </p>
-      )}
+      {feedback && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{feedback}</p>}
 
-      {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       {budgets.map((budget) => {
         const expanded = expandedId === budget.id;
@@ -115,9 +109,13 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                     Complexidade: {complexityLabels[budget.complexity]}
                   </span>
 
-                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700 sm:px-3">
-                    Área: {budget.area} m²
-                  </span>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700 sm:px-3">Área: {budget.area} m²</span>
+
+                  {typeof budget.total_cost === 'number' && (
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 sm:px-3">
+                      Total estimado: {money(budget.total_cost)}
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-xs font-medium text-gray-500 sm:text-sm">
@@ -127,9 +125,7 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                   })}
                 </p>
 
-                <p className="text-sm leading-relaxed text-gray-700 sm:pr-6">
-                  {budget.service_description}
-                </p>
+                <p className="text-sm leading-relaxed text-gray-700 sm:pr-6">{budget.service_description}</p>
               </div>
 
               <div className="flex items-center gap-2 self-start">
@@ -155,26 +151,38 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
             </div>
 
             {expanded && (
-              <div className="mt-3.5 grid gap-2.5 border-t border-gray-100 pt-3.5 sm:mt-4 sm:gap-3 sm:pt-4 md:grid-cols-2">
-                {(Object.entries(budget.result_json) as [
-                  keyof BudgetRecord['result_json'],
-                  string[]
-                ][]).map(([section, entries]) => (
-                  <div key={section} className="rounded-xl bg-gray-50 p-2.5 sm:p-3">
-                    <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-primary">
-                      {sectionLabels[section]}
-                    </h3>
-
-                    <ul className="space-y-1 text-sm text-gray-700">
-                      {entries.map((item: string, idx: number) => (
-                        <li key={`${section}-${idx}`} className="flex gap-2">
-                          <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
+              <div className="mt-3.5 space-y-3 border-t border-gray-100 pt-3.5 sm:mt-4 sm:pt-4">
+                {budget.pricing_json && (
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+                    <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-emerald-700">Resumo financeiro</h3>
+                    <div className="grid gap-1 text-sm text-gray-700 sm:grid-cols-2 lg:grid-cols-5">
+                      <p>Materiais: {money(budget.pricing_json.materialSubtotal)}</p>
+                      <p>Mão de obra: {money(budget.pricing_json.laborSubtotal)}</p>
+                      <p>Mobilização: {money(budget.pricing_json.mobilizationCost)}</p>
+                      <p>Adicionais: {money(budget.pricing_json.additionalCost)}</p>
+                      <p className="font-semibold text-emerald-700">Total: {money(budget.pricing_json.totalCost)}</p>
+                    </div>
                   </div>
-                ))}
+                )}
+
+                <div className="grid gap-2.5 sm:gap-3 md:grid-cols-2">
+                  {(Object.entries(budget.result_json) as [keyof BudgetRecord['result_json'], string[]][]).map(
+                    ([section, entries]) => (
+                      <div key={section} className="rounded-xl bg-gray-50 p-2.5 sm:p-3">
+                        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-primary">{sectionLabels[section]}</h3>
+
+                        <ul className="space-y-1 text-sm text-gray-700">
+                          {entries.map((item: string, idx: number) => (
+                            <li key={`${section}-${idx}`} className="flex gap-2">
+                              <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ),
+                  )}
+                </div>
               </div>
             )}
           </Card>

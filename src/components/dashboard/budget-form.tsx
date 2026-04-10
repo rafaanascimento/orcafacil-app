@@ -75,6 +75,12 @@ export const BudgetForm = () => {
       complexity,
       category: budget.category,
       result_json: budget.result,
+      pricing_json: budget.pricing,
+      material_subtotal: budget.pricing.materialSubtotal,
+      labor_subtotal: budget.pricing.laborSubtotal,
+      mobilization_cost: budget.pricing.mobilizationCost,
+      additional_cost: budget.pricing.additionalCost,
+      total_cost: budget.pricing.totalCost,
     });
 
     if (saveError) {
@@ -186,6 +192,7 @@ export const BudgetForm = () => {
         <BudgetResult
           category={generated.category}
           result={generated.result}
+          pricing={generated.pricing}
           onClear={() => {
             setGenerated(null);
             setFeedback('Resultado limpo. Você pode gerar um novo orçamento.');

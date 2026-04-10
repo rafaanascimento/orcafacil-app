@@ -44,6 +44,10 @@ export interface PricingResult {
   materialSubtotal: number;
   laborSubtotal: number;
   mobilizationCost: number;
+  complexityCost: number;
+  accessCost: number;
+  contingencyCost: number;
+  minimumAdjustment: number;
   additionalCost: number;
   totalCost: number;
   notes: string[];
@@ -56,6 +60,7 @@ export interface BudgetResultJson {
   mao_de_obra: string[];
   cronograma: string[];
   observacoes: string[];
+  pricing?: PricingResult;
 }
 
 export interface BudgetTemplate {

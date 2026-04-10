@@ -52,6 +52,7 @@ export const generateBudget = ({ description, area, complexity }: GenerateBudget
     category,
     pricing,
     result: {
+      pricing,
       diagnostico: [
         ...template.diagnostico,
         `Resumo da solicitação: ${description.trim()}`,

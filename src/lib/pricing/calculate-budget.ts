@@ -31,6 +31,10 @@ const defaultPricingResult = (category: BudgetCategory): PricingResult => ({
   materialSubtotal: 0,
   laborSubtotal: 0,
   mobilizationCost: 0,
+  complexityCost: 0,
+  accessCost: 0,
+  contingencyCost: 0,
+  minimumAdjustment: 0,
   additionalCost: 0,
   totalCost: 0,
   notes: ['Categoria sem composição específica de custos. Resultado parcial seguro aplicado.'],
@@ -51,9 +55,10 @@ export const calculateBudget = ({
 
   const composition = categoryCompositions[technicalCategory];
   const complexityMultiplier = complexityFactor[complexity];
+
   const materialItems: MaterialItem[] = composition.materials.map((item) => {
     const costRef = baseMaterialCosts[item.code as keyof typeof baseMaterialCosts];
-    const quantity = round2(safeArea * item.consumptionPerM2 * complexityMultiplier);
+    const quantity = round2(safeArea * item.consumptionPerM2);
     const totalCost = round2(quantity * costRef.unitCost);
 
     return {
@@ -68,7 +73,7 @@ export const calculateBudget = ({
 
   const laborItems: LaborItem[] = composition.labor.map((item) => {
     const costRef = baseLaborCosts[item.code as keyof typeof baseLaborCosts];
-    const days = item.fixedDays ?? daysFromProductivity(safeArea * complexityMultiplier, item.productivityM2PerDay);
+    const days = item.fixedDays ?? daysFromProductivity(safeArea, item.productivityM2PerDay);
     const quantity = round2(days);
     const totalCost = round2(quantity * costRef.unitCost);
 
@@ -86,16 +91,19 @@ export const calculateBudget = ({
   const laborSubtotal = round2(laborItems.reduce((sum, item) => sum + item.totalCost, 0));
 
   const mobilizationKey = accessType ?? composition.defaultMobilization;
-  const mobilizationCost = mobilizationKey ? round2(baseMobilizationCosts[mobilizationKey] * complexityMultiplier) : 0;
+  const mobilizationCost = mobilizationKey ? round2(baseMobilizationCosts[mobilizationKey]) : 0;
 
-  const additionalByAccess = composition.accessAdditionalByM2
-    ? round2(safeArea * composition.accessAdditionalByM2 * complexityMultiplier)
-    : 0;
+  const complexityCost = round2((materialSubtotal + laborSubtotal) * (complexityMultiplier - 1));
+  const accessCost = composition.accessAdditionalByM2 ? round2(safeArea * composition.accessAdditionalByM2) : 0;
+  const contingencyCost = round2((materialSubtotal + laborSubtotal) * 0.03);
 
-  const preTotal = round2(materialSubtotal + laborSubtotal + mobilizationCost + additionalByAccess);
+  const baseTotal = round2(
+    materialSubtotal + laborSubtotal + mobilizationCost + complexityCost + accessCost + contingencyCost,
+  );
 
-  const totalCost = composition.minCost ? Math.max(preTotal, composition.minCost) : preTotal;
-  const additionalCost = round2(totalCost - materialSubtotal - laborSubtotal - mobilizationCost);
+  const minimumAdjustment = composition.minCost ? round2(Math.max(composition.minCost - baseTotal, 0)) : 0;
+  const additionalCost = round2(complexityCost + accessCost + contingencyCost + minimumAdjustment);
+  const totalCost = round2(materialSubtotal + laborSubtotal + mobilizationCost + additionalCost);
 
   return {
     category,
@@ -104,12 +112,19 @@ export const calculateBudget = ({
     materialSubtotal,
     laborSubtotal,
     mobilizationCost,
+    complexityCost,
+    accessCost,
+    contingencyCost,
+    minimumAdjustment,
     additionalCost,
-    totalCost: round2(totalCost),
+    totalCost,
     notes: [
       ...composition.notes,
       `Fator de complexidade aplicado: ${complexity} (${complexityMultiplier}).`,
-      composition.minCost ? `Custo mínimo operacional considerado: R$ ${composition.minCost.toFixed(2)}.` : 'Sem custo mínimo obrigatório para esta categoria.',
+      `Adicionais detalhados — Complexidade: R$ ${complexityCost.toFixed(2)}, Acesso: R$ ${accessCost.toFixed(2)}, Contingência: R$ ${contingencyCost.toFixed(2)}, Ajuste de mínimo: R$ ${minimumAdjustment.toFixed(2)}.`,
+      composition.minCost
+        ? `Custo mínimo operacional de referência: R$ ${composition.minCost.toFixed(2)}.`
+        : 'Sem custo mínimo obrigatório para esta categoria.',
     ],
   };
 };

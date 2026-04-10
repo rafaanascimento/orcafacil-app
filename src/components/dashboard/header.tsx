@@ -38,17 +38,17 @@ export const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Link
             href="/history"
-            className="rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/95 transition hover:bg-white/20 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm sm:font-semibold"
+            className="whitespace-nowrap rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/95 transition hover:bg-white/20 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm sm:font-semibold"
           >
             Histórico
           </Link>
           <Button
             onClick={handleLogout}
             variant="ghost"
-            className="w-auto rounded-lg border border-white/25 px-3 py-1.5 text-xs font-medium text-white/95 hover:bg-white/20 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm sm:font-semibold"
+            className="h-8 w-auto whitespace-nowrap rounded-lg border border-white/25 px-3 py-1.5 text-xs font-medium text-white/95 hover:bg-white/20 sm:h-10 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm sm:font-semibold"
           >
             Sair
           </Button>

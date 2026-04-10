@@ -24,6 +24,7 @@ export const BudgetForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [areaTouched, setAreaTouched] = useState(false);
 
   const parsedArea = useMemo(() => {
     const value = Number(area);
@@ -37,6 +38,12 @@ export const BudgetForm = () => {
 
     if (!description.trim()) {
       setError('Descreva o serviço antes de gerar o orçamento.');
+      return;
+    }
+
+    if (parsedArea <= 0) {
+      setAreaTouched(true);
+      setError('Informe uma área válida em m² para gerar o orçamento.');
       return;
     }
 
@@ -113,17 +120,27 @@ export const BudgetForm = () => {
               <label className="mb-2 block text-sm font-semibold text-ink">Área aproximada (m²)</label>
               <Input
                 type="number"
-                min={0}
+                min={0.1}
                 step="0.1"
                 placeholder="Ex: 85"
                 value={area}
-                onChange={(event) => setArea(event.target.value)}
+                onBlur={() => setAreaTouched(true)}
+                onChange={(event) => {
+                  setArea(event.target.value);
+                  if (!areaTouched) setAreaTouched(true);
+                }}
+                aria-invalid={areaTouched && parsedArea <= 0}
+                required
+                className={areaTouched && parsedArea <= 0 ? 'border-red-400 focus:border-red-500 focus:ring-red-100' : ''}
               />
+              {areaTouched && parsedArea <= 0 && (
+                <p className="mt-1 text-xs font-medium text-red-600">Área obrigatória. Informe um valor maior que zero.</p>
+              )}
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-ink">Complexidade</label>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-3 gap-1 rounded-xl border border-blue-100 bg-blue-50/60 p-1">
                 {complexityOptions.map((option) => {
                   const selected = complexity === option.value;
                   return (
@@ -131,18 +148,20 @@ export const BudgetForm = () => {
                       key={option.value}
                       type="button"
                       onClick={() => setComplexity(option.value)}
-                      className={`rounded-xl border px-3 py-2.5 text-left transition ${
+                      className={`rounded-lg px-2 py-2 text-center text-xs font-semibold transition sm:text-sm ${
                         selected
-                          ? 'border-primary bg-blue-50 shadow-[0_6px_18px_-16px_rgba(30,64,175,0.9)]'
-                          : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/40'
+                          ? 'bg-white text-primary shadow-[0_6px_18px_-16px_rgba(30,64,175,0.9)]'
+                          : 'text-gray-600 hover:bg-white/70'
                       }`}
                     >
-                      <p className="text-sm font-semibold text-ink">{option.label}</p>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-gray-500">{option.helper}</p>
+                      {option.label}
                     </button>
                   );
                 })}
               </div>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
+                {complexityOptions.find((option) => option.value === complexity)?.helper}
+              </p>
             </div>
           </div>
 

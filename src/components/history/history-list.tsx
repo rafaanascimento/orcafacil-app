@@ -19,6 +19,12 @@ const sectionLabels: Record<keyof BudgetRecord['result_json'], string> = {
   observacoes: 'Observações',
 };
 
+const complexityLabels: Record<BudgetRecord['complexity'], string> = {
+  baixa: 'Baixa',
+  media: 'Média',
+  alta: 'Alta',
+};
+
 export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
   const [budgets, setBudgets] = useState(initialBudgets);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -106,7 +112,7 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                   </span>
 
                   <span className="rounded-full bg-blue-50 px-2.5 py-1 text-primary sm:px-3">
-                    Complexidade: {budget.complexity}
+                    Complexidade: {complexityLabels[budget.complexity]}
                   </span>
 
                   <span className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700 sm:px-3">
@@ -130,7 +136,7 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-auto px-3 py-2 text-xs sm:text-sm"
+                  className="w-auto whitespace-nowrap px-3 py-2 text-xs sm:text-sm"
                   onClick={() => setExpandedId(expanded ? null : budget.id)}
                 >
                   {expanded ? 'Ocultar detalhes' : 'Ver detalhes'}

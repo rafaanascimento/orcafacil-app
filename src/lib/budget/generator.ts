@@ -3,15 +3,17 @@ import { fachadaTemplate } from '@/data/templates/fachada';
 import { hidraulicaTemplate } from '@/data/templates/hidraulica';
 import { pinturaTemplate } from '@/data/templates/pintura';
 import { reformaGeralTemplate } from '@/data/templates/reforma-geral';
-import type {
-  BudgetCategory,
-  BudgetTemplate,
-  GenerateBudgetInput,
-  GeneratedBudget,
-} from '@/types/budget';
-import { classifyBudgetCategory } from './classifiers';
+import { classifyBudgetCategory } from '@/lib/budget/classifiers';
+import { calculateBudget } from '@/lib/pricing/calculate-budget';
+import type { BudgetCategory, BudgetTemplate, GenerateBudgetInput, GeneratedBudget } from '@/types/budget';
 
 const templateMap: Record<BudgetCategory, BudgetTemplate> = {
+  pintura_interna: pinturaTemplate,
+  pintura_externa: fachadaTemplate,
+  percussao_simples: fachadaTemplate,
+  percussao_irata: fachadaTemplate,
+  fachada_ceramica: fachadaTemplate,
+  fachada_textura: fachadaTemplate,
   fachada: fachadaTemplate,
   pintura: pinturaTemplate,
   drywall: drywallTemplate,
@@ -31,27 +33,46 @@ const areaHint = (area: number) => {
   return 'Área extensa com logística e organização de equipe ampliadas.';
 };
 
+const money = (value: number) =>
+  value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+
 export const generateBudget = ({ description, area, complexity }: GenerateBudgetInput): GeneratedBudget => {
   const category = classifyBudgetCategory(description);
-  const template = templateMap[category];
+  const template = templateMap[category] ?? reformaGeralTemplate;
+  const pricing = calculateBudget({
+    category,
+    area,
+    complexity,
+  });
 
   return {
     category,
+    pricing,
     result: {
+      pricing,
       diagnostico: [
         ...template.diagnostico,
         `Resumo da solicitação: ${description.trim()}`,
         areaHint(area),
       ],
       escopo: template.escopo,
-      materiais: template.materiais,
+      materiais: [
+        ...template.materiais,
+        ...pricing.materials.slice(0, 4).map((item) => `${item.name}: ${item.quantity} ${item.unit}.`),
+      ],
       mao_de_obra: [
         ...template.mao_de_obra,
         complexityLabels[complexity],
+        ...pricing.labor.map((item) => `${item.name}: ${item.quantity} ${item.unit}.`),
       ],
       cronograma: template.cronograma[complexity],
       observacoes: [
         ...template.observacoes,
+        ...pricing.notes,
+        `Resumo financeiro preliminar — Materiais: ${money(pricing.materialSubtotal)}, Mão de obra: ${money(pricing.laborSubtotal)}, Mobilização: ${money(pricing.mobilizationCost)}, Total estimado: ${money(pricing.totalCost)}.`,
         'Valores finais devem ser confirmados após vistoria técnica.',
       ],
     },

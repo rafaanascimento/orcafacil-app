@@ -1,13 +1,23 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo, useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 
-export const LoginForm = () => {
+interface LoginFormProps {
+  initialSessionReason?: string;
+}
+
+const sessionReasonMessage: Record<string, string> = {
+  session_expired: 'Sua sessão expirou. Faça login novamente.',
+  unauthorized: 'Faça login para acessar esta área protegida.',
+  signed_out: 'Logout realizado com sucesso.',
+};
+
+export const LoginForm = ({ initialSessionReason }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -15,6 +25,13 @@ export const LoginForm = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const reasonFromUrl = searchParams.get('reason') ?? initialSessionReason ?? '';
+  const nextParam = searchParams.get('next');
+  const safeRedirect: '/dashboard' | '/history' = nextParam === '/history' ? '/history' : '/dashboard';
+
+  const sessionInfo = useMemo(() => sessionReasonMessage[reasonFromUrl] ?? null, [reasonFromUrl]);
 
   const handleAuth = async (event: FormEvent) => {
     event.preventDefault();
@@ -22,38 +39,42 @@ export const LoginForm = () => {
     setMessage(null);
     setIsLoading(true);
 
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    const action = isRegisterMode
-      ? supabase.auth.signUp({ email, password })
-      : supabase.auth.signInWithPassword({ email, password });
+      const action = isRegisterMode
+        ? supabase.auth.signUp({ email, password })
+        : supabase.auth.signInWithPassword({ email, password });
 
-    const { error: authError } = await action;
+      const { error: authError } = await action;
 
-    if (authError) {
-      setError(authError.message);
+      if (authError) {
+        setError(authError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (isRegisterMode) {
+        setMessage('Cadastro realizado. Verifique seu e-mail para confirmação, se necessário.');
+      } else {
+        router.replace(safeRedirect);
+        router.refresh();
+      }
+    } catch {
+      setError('Falha ao validar sessão. Tente novamente.');
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    if (isRegisterMode) {
-      setMessage('Cadastro realizado. Verifique seu e-mail para confirmação, se necessário.');
-    } else {
-      router.replace('/dashboard');
-      router.refresh();
-    }
-
-    setIsLoading(false);
   };
 
   return (
     <Card className="w-full max-w-md p-6 sm:p-8">
       <div className="mb-6 space-y-2">
         <h1 className="text-2xl font-bold text-ink">{isRegisterMode ? 'Criar conta' : 'Entrar'}</h1>
-        <p className="text-sm text-gray-500">
-          Acesse o OrçaFácil para gerar orçamentos técnicos com rapidez.
-        </p>
+        <p className="text-sm text-gray-500">Acesse o OrçaFácil para gerar orçamentos técnicos com rapidez.</p>
       </div>
+
+      {sessionInfo && !isRegisterMode && <p className="mb-4 text-sm text-amber-700">{sessionInfo}</p>}
 
       <form onSubmit={handleAuth} className="space-y-4">
         <Input

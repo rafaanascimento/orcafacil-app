@@ -24,6 +24,12 @@ const complexityLabels: Record<BudgetRecord['complexity'], string> = {
   alta: 'Alta',
 };
 
+const money = (value: number) =>
+  value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+
 export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
   const [budgets, setBudgets] = useState(initialBudgets);
   const [expandedId, setExpandedId] = useState<string | null>(null);

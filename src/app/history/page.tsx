@@ -24,18 +24,18 @@ export default async function HistoryPage() {
   const budgets = (data ?? []) as BudgetRecord[];
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <header className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6">
+    <main className="mx-auto min-h-screen w-full max-w-6xl space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
+      <header className="rounded-2xl border border-blue-100 bg-white p-4 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.35)] sm:rounded-3xl sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Histórico técnico</p>
-            <h1 className="mt-1 text-2xl font-bold text-ink">Orçamentos salvos</h1>
+            <h1 className="mt-1 text-xl font-bold text-ink sm:text-2xl">Orçamentos salvos</h1>
             <p className="mt-1 text-sm text-gray-500">Visualize, detalhe e gerencie os orçamentos gerados.</p>
           </div>
 
           <Link
             href="/dashboard"
-            className="inline-flex w-fit items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-blue-100"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-blue-100 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm"
           >
             <span aria-hidden>←</span>
             <span>Voltar para dashboard</span>

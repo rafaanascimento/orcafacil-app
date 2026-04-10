@@ -24,6 +24,7 @@ export const BudgetForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [areaTouched, setAreaTouched] = useState(false);
 
   const parsedArea = useMemo(() => {
     const value = Number(area);
@@ -37,6 +38,12 @@ export const BudgetForm = () => {
 
     if (!description.trim()) {
       setError('Descreva o serviço antes de gerar o orçamento.');
+      return;
+    }
+
+    if (parsedArea <= 0) {
+      setAreaTouched(true);
+      setError('Informe uma área válida em m² para gerar o orçamento.');
       return;
     }
 
@@ -80,16 +87,16 @@ export const BudgetForm = () => {
   };
 
   return (
-    <div className="space-y-5">
-      <Card className="border-blue-100 p-5 shadow-sm sm:p-6">
-        <div className="mb-5">
-          <h2 className="text-xl font-bold text-ink">Gerador de orçamento técnico</h2>
+    <div className="space-y-4 sm:space-y-5">
+      <Card className="border-blue-100/80 p-4 sm:p-6">
+        <div className="mb-4 sm:mb-5">
+          <h2 className="text-lg font-bold text-ink sm:text-xl">Gerador de orçamento técnico</h2>
           <p className="mt-1 text-sm text-gray-600">
             Preencha os campos abaixo para gerar uma proposta estruturada e pronta para envio.
           </p>
         </div>
 
-        <form onSubmit={handleGenerate} className="space-y-5">
+        <form onSubmit={handleGenerate} className="space-y-4 sm:space-y-5">
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
               <label className="block text-sm font-semibold text-ink">Descrição do serviço</label>
@@ -101,28 +108,39 @@ export const BudgetForm = () => {
             </p>
             <Textarea
               placeholder="Ex: Reparar infiltração e trincas na fachada frontal de um prédio comercial com preparação e pintura final."
-              rows={6}
+              rows={5}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
+              className="min-h-28 resize-y"
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+          <div className="grid gap-3.5 lg:grid-cols-[1fr_1.4fr]">
             <div>
               <label className="mb-2 block text-sm font-semibold text-ink">Área aproximada (m²)</label>
               <Input
                 type="number"
-                min={0}
+                min={0.1}
                 step="0.1"
                 placeholder="Ex: 85"
                 value={area}
-                onChange={(event) => setArea(event.target.value)}
+                onBlur={() => setAreaTouched(true)}
+                onChange={(event) => {
+                  setArea(event.target.value);
+                  if (!areaTouched) setAreaTouched(true);
+                }}
+                aria-invalid={areaTouched && parsedArea <= 0}
+                required
+                className={areaTouched && parsedArea <= 0 ? 'border-red-400 focus:border-red-500 focus:ring-red-100' : ''}
               />
+              {areaTouched && parsedArea <= 0 && (
+                <p className="mt-1 text-xs font-medium text-red-600">Área obrigatória. Informe um valor maior que zero.</p>
+              )}
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-ink">Complexidade</label>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-3 gap-1 rounded-xl border border-blue-100 bg-blue-50/60 p-1">
                 {complexityOptions.map((option) => {
                   const selected = complexity === option.value;
                   return (
@@ -130,26 +148,28 @@ export const BudgetForm = () => {
                       key={option.value}
                       type="button"
                       onClick={() => setComplexity(option.value)}
-                      className={`rounded-xl border p-3 text-left transition ${
+                      className={`rounded-lg px-2 py-2 text-center text-xs font-semibold transition sm:text-sm ${
                         selected
-                          ? 'border-primary bg-blue-50 shadow-sm'
-                          : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/40'
+                          ? 'bg-white text-primary shadow-[0_6px_18px_-16px_rgba(30,64,175,0.9)]'
+                          : 'text-gray-600 hover:bg-white/70'
                       }`}
                     >
-                      <p className="text-sm font-semibold text-ink">{option.label}</p>
-                      <p className="mt-1 text-xs text-gray-500">{option.helper}</p>
+                      {option.label}
                     </button>
                   );
                 })}
               </div>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
+                {complexityOptions.find((option) => option.value === complexity)?.helper}
+              </p>
             </div>
           </div>
 
           <Button
             type="submit"
             isLoading={isLoading}
-            leftIcon={<span aria-hidden>⚙️</span>}
-            className="h-12 text-base shadow-md sm:w-auto sm:px-8"
+            leftIcon={<span aria-hidden className="text-base leading-none">⚙️</span>}
+            className="h-11 gap-2.5 text-[15px] shadow-[0_12px_26px_-16px_rgba(249,115,22,0.95)] sm:h-12 sm:w-auto sm:px-8 sm:text-base"
           >
             {isLoading ? 'Gerando orçamento...' : 'Gerar Orçamento'}
           </Button>

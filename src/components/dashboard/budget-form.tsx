@@ -91,8 +91,8 @@ export const BudgetForm = () => {
     const { error: saveError } = await supabase.from('budgets').insert({
       ...basePayload,
       pricing_json: budget.pricing,
-      material_subtotal: budget.pricing.materialSubtotal,
-      labor_subtotal: budget.pricing.laborSubtotal,
+      material_cost: budget.pricing.materialSubtotal,
+      labor_cost: budget.pricing.laborSubtotal,
       mobilization_cost: budget.pricing.mobilizationCost,
       additional_cost: budget.pricing.additionalCost,
       total_cost: budget.pricing.totalCost,
@@ -102,7 +102,8 @@ export const BudgetForm = () => {
       const { error: legacySaveError } = await supabase.from('budgets').insert(basePayload);
 
       if (legacySaveError) {
-        setError('Orçamento gerado, mas não foi possível salvar no histórico agora.');
+        console.error('Erro no fallback legacy:', legacySaveError);
+        setError(`Orçamento gerado, mas não foi possível salvar. Detalhe: ${legacySaveError.message}`);
       } else {
         setFeedback('Orçamento salvo no histórico. Campos financeiros completos aguardam migração do banco.');
       }
@@ -112,7 +113,8 @@ export const BudgetForm = () => {
     }
 
     if (saveError) {
-      setError('Orçamento gerado, mas não foi possível salvar no histórico agora.');
+      console.error('Erro ao salvar orçamento:', saveError);
+      setError(`Orçamento gerado, mas não foi possível salvar. Detalhe: ${saveError.message}`);
     } else {
       setFeedback('Orçamento gerado e salvo com sucesso no histórico.');
     }
@@ -205,7 +207,11 @@ export const BudgetForm = () => {
           <Button
             type="submit"
             isLoading={isLoading}
-            leftIcon={<span aria-hidden className="relative -top-px text-[15px] leading-none sm:text-base">⚙️</span>}
+            leftIcon={
+              <span aria-hidden className="relative -top-px text-[15px] leading-none sm:text-base">
+                ⚙️
+              </span>
+            }
             className="h-10 gap-2 text-[14px] shadow-[0_12px_24px_-16px_rgba(249,115,22,0.95)] sm:h-12 sm:w-auto sm:px-8 sm:text-base"
           >
             {isLoading ? 'Gerando orçamento...' : 'Gerar Orçamento'}

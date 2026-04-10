@@ -17,7 +17,7 @@ export default async function HistoryPage() {
 
   const { data, error } = await supabase
     .from('budgets')
-    .select('id, service_description, area, complexity, category, result_json, created_at')
+    .select('id, service_description, area, complexity, category, result_json, pricing_json, material_subtotal, labor_subtotal, mobilization_cost, additional_cost, total_cost, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 

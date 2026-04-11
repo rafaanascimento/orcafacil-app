@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { getCategoryLabel, formatCurrency } from '@/lib/budget/presentation';
+import { getCategoryLabel, formatCurrency, formatDisplayQuantity } from '@/lib/budget/presentation';
 import { createClient } from '@/lib/supabase/client';
 import type { BudgetRecord, PricingResult } from '@/types/budget';
 import { Button } from '@/components/ui/button';
@@ -24,11 +24,21 @@ const complexityLabels: Record<BudgetRecord['complexity'], string> = {
   alta: 'Alta',
 };
 
-const money = (value: number) =>
-  value.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  });
+const resolveBudgetTotal = (budget: BudgetRecord, pricing: PricingResult | null): number | null => {
+  if (typeof pricing?.totalCost === 'number') return pricing.totalCost;
+  if (typeof budget.total_cost === 'number') return budget.total_cost;
+
+  const material = budget.material_subtotal ?? budget.material_cost;
+  const labor = budget.labor_subtotal ?? budget.labor_cost;
+  const mobilization = budget.mobilization_cost ?? 0;
+  const additional = budget.additional_cost ?? 0;
+
+  if (typeof material === 'number' || typeof labor === 'number') {
+    return (material ?? 0) + (labor ?? 0) + mobilization + additional;
+  }
+
+  return null;
+};
 
 export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
   const [budgets, setBudgets] = useState(initialBudgets);
@@ -93,6 +103,7 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
         const expanded = expandedId === budget.id;
         const pricing: PricingResult | null = budget.pricing_json ?? budget.result_json.pricing ?? null;
         const displayCategory = pricing?.category ?? budget.category;
+        const totalEstimated = resolveBudgetTotal(budget, pricing);
 
         return (
           <Card
@@ -112,9 +123,9 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
 
                   <span className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700 sm:px-3">Área: {budget.area} m²</span>
 
-                  {(pricing || typeof budget.total_cost === 'number') && (
+                  {typeof totalEstimated === 'number' && (
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 sm:px-3">
-                      Total estimado: {formatCurrency(pricing?.totalCost ?? budget.total_cost ?? 0)}
+                      Total estimado: {formatCurrency(totalEstimated)}
                     </span>
                   )}
                 </div>
@@ -156,13 +167,10 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                 {pricing && (
                   <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
                     <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-emerald-700">Resumo financeiro</h3>
-                    <div className="grid gap-1 text-sm text-gray-700 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-1 text-sm text-gray-700 sm:grid-cols-3">
                       <p>Materiais: {formatCurrency(pricing.materialSubtotal ?? 0)}</p>
                       <p>Mão de obra: {formatCurrency(pricing.laborSubtotal ?? 0)}</p>
-                      <p>Mobilização: {formatCurrency(pricing.mobilizationCost ?? 0)}</p>
-                      <p>Complexidade: {formatCurrency(pricing.complexityCost ?? 0)}</p>
-                      <p>Adicionais: {formatCurrency(pricing.additionalCost ?? 0)}</p>
-                      <p className="font-semibold text-emerald-700">Total: {formatCurrency(pricing.totalCost ?? 0)}</p>
+                      <p className="font-semibold text-emerald-700">Total: {formatCurrency(pricing.totalCost ?? totalEstimated ?? 0)}</p>
                     </div>
                   </div>
                 )}
@@ -174,7 +182,7 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                       <ul className="space-y-1 text-sm text-gray-700">
                         {(pricing.materials ?? []).map((item) => (
                           <li key={item.code}>
-                            {item.name} — {item.quantity} {item.unit} ({formatCurrency(item.totalCost)})
+                            {item.name} — {formatDisplayQuantity(item.quantity, item.unit)} ({formatCurrency(item.totalCost)})
                           </li>
                         ))}
                       </ul>
@@ -184,7 +192,7 @@ export const HistoryList = ({ initialBudgets }: HistoryListProps) => {
                       <ul className="space-y-1 text-sm text-gray-700">
                         {(pricing.labor ?? []).map((item) => (
                           <li key={item.code}>
-                            {item.name} — {item.quantity} {item.unit} ({formatCurrency(item.totalCost)})
+                            {item.name} — {formatDisplayQuantity(item.quantity, item.unit)} ({formatCurrency(item.totalCost)})
                           </li>
                         ))}
                       </ul>

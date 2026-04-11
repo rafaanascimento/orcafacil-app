@@ -38,3 +38,17 @@ export const formatCurrency = (value: number): string =>
     style: 'currency',
     currency: 'BRL',
   });
+
+export const formatDisplayQuantity = (quantity: number, unit: string): string => {
+  if (quantity <= 0) return `0 ${unit}`;
+
+  if (quantity < 1) {
+    const percent = Math.round(quantity * 100);
+    if (unit === 'diária') return `alocação parcial (${percent}% da diária)`;
+    if (unit === 'verba') return `verba proporcional (${percent}%)`;
+    return `estimativa proporcional (${percent}% de ${unit})`;
+  }
+
+  const rounded = quantity >= 10 ? Math.round(quantity) : Math.round(quantity * 10) / 10;
+  return `${rounded.toLocaleString('pt-BR')} ${unit}`;
+};

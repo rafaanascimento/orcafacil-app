@@ -86,7 +86,7 @@ export const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
             onClick={handleLogout}
             isLoading={isLoggingOut}
             variant="ghost"
-            className="h-8 w-auto whitespace-nowrap rounded-lg border border-white/20 bg-white/5 px-3 text-xs font-medium text-blue-50/95 hover:bg-white/15 sm:h-10 sm:rounded-xl sm:px-4 sm:text-sm sm:font-semibold"
+            className="h-8 w-auto whitespace-nowrap rounded-lg border border-white/55 bg-white/20 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-white/30 sm:h-10 sm:rounded-xl sm:px-4 sm:text-sm"
           >
             Sair
           </Button>

@@ -91,8 +91,8 @@ export const BudgetForm = () => {
     const { error: saveError } = await supabase.from('budgets').insert({
       ...basePayload,
       pricing_json: budget.pricing,
-      material_cost: budget.pricing.materialSubtotal,
-      labor_cost: budget.pricing.laborSubtotal,
+      material_subtotal: budget.pricing.materialSubtotal,
+      labor_subtotal: budget.pricing.laborSubtotal,
       mobilization_cost: budget.pricing.mobilizationCost,
       additional_cost: budget.pricing.additionalCost,
       total_cost: budget.pricing.totalCost,
@@ -102,8 +102,7 @@ export const BudgetForm = () => {
       const { error: legacySaveError } = await supabase.from('budgets').insert(basePayload);
 
       if (legacySaveError) {
-        console.error('Erro no fallback legacy:', legacySaveError);
-        setError(`Orçamento gerado, mas não foi possível salvar. Detalhe: ${legacySaveError.message}`);
+        setError('Orçamento gerado, mas não foi possível salvar no histórico agora.');
       } else {
         setFeedback('Orçamento salvo no histórico. Campos financeiros completos aguardam migração do banco.');
       }

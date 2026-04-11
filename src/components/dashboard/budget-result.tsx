@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatBudgetText } from '@/lib/budget/formatter';
-import { formatCurrency, getCategoryLabel } from '@/lib/budget/presentation';
+import { formatCurrency, formatDisplayQuantity, getCategoryLabel } from '@/lib/budget/presentation';
 import type { BudgetCategory, BudgetResultJson, PricingResult } from '@/types/budget';
 
 interface BudgetResultProps {
@@ -71,16 +71,13 @@ export const BudgetResult = ({ category, result, pricing, onClear }: BudgetResul
         {copyError && <p className="text-sm text-red-600">{copyError}</p>}
 
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
-          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-emerald-700">Resumo financeiro executivo</h3>
-          <div className="grid gap-2 text-sm text-gray-700 sm:grid-cols-2 lg:grid-cols-3">
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-emerald-700">Resumo financeiro</h3>
+          <div className="grid gap-2 text-sm text-gray-700 sm:grid-cols-3">
             <p><strong>Materiais:</strong> {formatCurrency(pricing.materialSubtotal)}</p>
             <p><strong>Mão de obra:</strong> {formatCurrency(pricing.laborSubtotal)}</p>
-            <p><strong>Mobilização:</strong> {formatCurrency(pricing.mobilizationCost)}</p>
-            <p><strong>Complexidade:</strong> {formatCurrency(pricing.complexityCost)}</p>
-            <p><strong>Acesso e contingência:</strong> {formatCurrency(pricing.accessCost + pricing.contingencyCost)}</p>
-            <p><strong>Ajuste de mínimo:</strong> {formatCurrency(pricing.minimumAdjustment)}</p>
-            <p className="font-bold text-emerald-800 sm:col-span-2 lg:col-span-3"><strong>Total estimado:</strong> {formatCurrency(pricing.totalCost)}</p>
+            <p className="font-bold text-emerald-800"><strong>Total estimado:</strong> {formatCurrency(pricing.totalCost)}</p>
           </div>
+          <p className="mt-2 text-xs text-emerald-800/80">Valor preliminar sujeito à vistoria técnica.</p>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -91,7 +88,7 @@ export const BudgetResult = ({ category, result, pricing, onClear }: BudgetResul
                 <div key={item.code} className="rounded-lg border border-gray-100 bg-gray-50 p-2.5">
                   <p className="font-semibold text-gray-800">{item.name}</p>
                   <p className="text-gray-600">
-                    {item.quantity} {item.unit} × {formatCurrency(item.unitCost)} = {formatCurrency(item.totalCost)}
+                    {formatDisplayQuantity(item.quantity, item.unit)} × {formatCurrency(item.unitCost)} = {formatCurrency(item.totalCost)}
                   </p>
                 </div>
               ))}
@@ -105,7 +102,7 @@ export const BudgetResult = ({ category, result, pricing, onClear }: BudgetResul
                 <div key={item.code} className="rounded-lg border border-gray-100 bg-gray-50 p-2.5">
                   <p className="font-semibold text-gray-800">{item.name}</p>
                   <p className="text-gray-600">
-                    {item.quantity} {item.unit} × {formatCurrency(item.unitCost)} = {formatCurrency(item.totalCost)}
+                    {formatDisplayQuantity(item.quantity, item.unit)} × {formatCurrency(item.unitCost)} = {formatCurrency(item.totalCost)}
                   </p>
                 </div>
               ))}

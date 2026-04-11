@@ -98,6 +98,8 @@ export interface BudgetRecord {
   pricing_json?: PricingResult | null;
   material_subtotal?: number | null;
   labor_subtotal?: number | null;
+  material_cost?: number | null;
+  labor_cost?: number | null;
   mobilization_cost?: number | null;
   additional_cost?: number | null;
   total_cost?: number | null;

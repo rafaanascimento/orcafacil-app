@@ -112,7 +112,8 @@ export const BudgetForm = () => {
     }
 
     if (saveError) {
-      setError('Orçamento gerado, mas não foi possível salvar no histórico agora.');
+      console.error('Erro ao salvar orçamento:', saveError);
+      setError(`Orçamento gerado, mas não foi possível salvar. Detalhe: ${saveError.message}`);
     } else {
       setFeedback('Orçamento gerado e salvo com sucesso no histórico.');
     }
@@ -205,7 +206,11 @@ export const BudgetForm = () => {
           <Button
             type="submit"
             isLoading={isLoading}
-            leftIcon={<span aria-hidden className="relative -top-px text-[15px] leading-none sm:text-base">⚙️</span>}
+            leftIcon={
+              <span aria-hidden className="relative -top-px text-[15px] leading-none sm:text-base">
+                ⚙️
+              </span>
+            }
             className="h-10 gap-2 text-[14px] shadow-[0_12px_24px_-16px_rgba(249,115,22,0.95)] sm:h-12 sm:w-auto sm:px-8 sm:text-base"
           >
             {isLoading ? 'Gerando orçamento...' : 'Gerar Orçamento'}

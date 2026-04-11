@@ -2,22 +2,21 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { HistoryList } from '@/components/history/history-list';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getSafeUser } from '@/lib/supabase/server';
 import type { BudgetRecord } from '@/types/budget';
 
 export default async function HistoryPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeUser();
 
   if (!user) {
-    redirect('/login');
+    redirect('/login?reason=session_expired');
   }
+
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('budgets')
-    .select('id, service_description, area, complexity, category, result_json, created_at')
+    .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 

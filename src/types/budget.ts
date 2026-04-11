@@ -1,11 +1,71 @@
 export type BudgetComplexity = 'baixa' | 'media' | 'alta';
 
-export type BudgetCategory =
+export type TechnicalBudgetCategory =
+  | 'pintura_interna'
+  | 'pintura_externa'
+  | 'percussao_simples'
+  | 'percussao_irata'
+  | 'fachada_ceramica'
+  | 'fachada_textura'
+  | 'impermeabilizacao_reservatorio';
+
+export type LegacyBudgetCategory =
   | 'fachada'
   | 'pintura'
   | 'drywall'
   | 'hidraulica'
   | 'reforma-geral';
+
+export type BudgetCategory = TechnicalBudgetCategory | LegacyBudgetCategory;
+export type BudgetFamily =
+  | 'Teste de Percussão'
+  | 'Reforma em Fachadas'
+  | 'Pintura Geral'
+  | 'Impermeabilização de Reservatórios'
+  | 'Serviços Gerais';
+
+export type AccessType = 'simples' | 'andaime' | 'balancim' | 'irata';
+
+export interface MaterialItem {
+  code: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface LaborItem {
+  code: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface PricingResult {
+  category: BudgetCategory;
+  materials: MaterialItem[];
+  labor: LaborItem[];
+  materialSubtotal: number;
+  laborSubtotal: number;
+  mobilizationCost: number;
+  complexityCost: number;
+  accessCost: number;
+  contingencyCost: number;
+  minimumAdjustment: number;
+  additionalCost: number;
+  totalCost: number;
+  notes: string[];
+}
+
+export interface BudgetExecutiveSummary {
+  service: string;
+  family: BudgetFamily;
+  objective: string;
+  area: number;
+}
 
 export interface BudgetResultJson {
   diagnostico: string[];
@@ -14,6 +74,8 @@ export interface BudgetResultJson {
   mao_de_obra: string[];
   cronograma: string[];
   observacoes: string[];
+  pricing?: PricingResult;
+  executive?: BudgetExecutiveSummary;
 }
 
 export interface BudgetTemplate {
@@ -38,6 +100,7 @@ export interface GenerateBudgetInput {
 export interface GeneratedBudget {
   category: BudgetCategory;
   result: BudgetResultJson;
+  pricing: PricingResult;
 }
 
 export interface BudgetRecord {
@@ -47,5 +110,13 @@ export interface BudgetRecord {
   complexity: BudgetComplexity;
   category: BudgetCategory;
   result_json: BudgetResultJson;
+  pricing_json?: PricingResult | null;
+  material_subtotal?: number | null;
+  labor_subtotal?: number | null;
+  material_cost?: number | null;
+  labor_cost?: number | null;
+  mobilization_cost?: number | null;
+  additional_cost?: number | null;
+  total_cost?: number | null;
   created_at: string;
 }

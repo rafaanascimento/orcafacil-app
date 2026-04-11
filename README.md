@@ -7,7 +7,7 @@ Base completa de um app web responsivo para geração de orçamento técnico, co
 O OrçaFácil permite:
 - autenticação de usuário (login e cadastro);
 - geração de orçamento técnico por descrição + área + complexidade;
-- classificação automática por categoria (fachada, pintura, drywall, hidráulica ou reforma geral);
+- classificação automática por categoria técnica (pintura interna/externa, percussão simples/IRATA, fachada cerâmica/textura, com fallback seguro);
 - exibição imediata do orçamento estruturado;
 - salvamento no Supabase na tabela `budgets`;
 - consulta de histórico de orçamentos em ordem decrescente.
@@ -53,6 +53,12 @@ Campos esperados:
 - `complexity`
 - `category`
 - `result_json`
+- `pricing_json` (novo, opcional)
+- `material_subtotal` (novo, opcional)
+- `labor_subtotal` (novo, opcional)
+- `mobilization_cost` (novo, opcional)
+- `additional_cost` (novo, opcional)
+- `total_cost` (novo, opcional)
 - `created_at`
 
 `result_json` segue a estrutura:
@@ -113,3 +119,27 @@ public/images/
 - Resultado de orçamento com ação de cópia em texto estruturado e limpeza rápida.
 - Histórico com visual expandível e exclusão segura por item (escopo do usuário autenticado).
 - Interface mobile-first e responsiva para desktop e mobile web.
+
+
+## Motor de composição e custo (v2)
+
+O sistema agora possui uma camada de pré-orçamentação técnica com:
+
+- base interna de custos em `src/data/pricing/base-costs.ts`;
+- composições por categoria em `src/data/pricing/compositions.ts`;
+- motor de cálculo em `src/lib/pricing/calculate-budget.ts`;
+- integração da geração textual com resumo financeiro, materiais e mão de obra estimados.
+
+### Fatores de complexidade
+
+- baixa = 1
+- media = 1.1
+- alta = 1.25
+
+### Migração sugerida
+
+Para preparar a tabela `budgets` sem quebrar dados antigos, aplique:
+
+- `supabase/migrations/20260410_add_pricing_fields_to_budgets.sql`
+
+A migração adiciona apenas colunas opcionais (`if not exists`), preservando compatibilidade com o modelo antigo.

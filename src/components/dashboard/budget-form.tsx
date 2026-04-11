@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from 'react';
 import { generateBudget } from '@/lib/budget/generator';
+import { getStorageCategory } from '@/lib/budget/presentation';
 import { createClient } from '@/lib/supabase/client';
 import type { BudgetComplexity, GeneratedBudget } from '@/types/budget';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,11 @@ const complexityOptions: { label: string; value: BudgetComplexity; helper: strin
   { label: 'Média', value: 'media', helper: 'Exige coordenação técnica moderada.' },
   { label: 'Alta', value: 'alta', helper: 'Demanda gestão detalhada e execução faseada.' },
 ];
+
+const hasMissingColumnError = (message: string | undefined) => {
+  const text = (message ?? '').toLowerCase();
+  return text.includes('column') && text.includes('does not exist');
+};
 
 export const BudgetForm = () => {
   const [description, setDescription] = useState('');
@@ -68,14 +74,42 @@ export const BudgetForm = () => {
       return;
     }
 
-    const { error: saveError } = await supabase.from('budgets').insert({
+    const enrichedResult = {
+      ...budget.result,
+      pricing: budget.pricing,
+    };
+
+    const basePayload = {
       user_id: user.id,
       service_description: description,
       area: parsedArea,
       complexity,
-      category: budget.category,
-      result_json: budget.result,
+      category: getStorageCategory(budget.category),
+      result_json: enrichedResult,
+    };
+
+    const { error: saveError } = await supabase.from('budgets').insert({
+      ...basePayload,
+      pricing_json: budget.pricing,
+      material_subtotal: budget.pricing.materialSubtotal,
+      labor_subtotal: budget.pricing.laborSubtotal,
+      mobilization_cost: budget.pricing.mobilizationCost,
+      additional_cost: budget.pricing.additionalCost,
+      total_cost: budget.pricing.totalCost,
     });
+
+    if (saveError && hasMissingColumnError(saveError.message)) {
+      const { error: legacySaveError } = await supabase.from('budgets').insert(basePayload);
+
+      if (legacySaveError) {
+        setError('Orçamento gerado, mas não foi possível salvar no histórico agora.');
+      } else {
+        setFeedback('Orçamento salvo no histórico. Campos financeiros completos aguardam migração do banco.');
+      }
+
+      setIsLoading(false);
+      return;
+    }
 
     if (saveError) {
       setError('Orçamento gerado, mas não foi possível salvar no histórico agora.');
@@ -121,7 +155,7 @@ export const BudgetForm = () => {
               <Input
                 type="number"
                 min={0.1}
-                step="0.1"
+                step={0.1}
                 inputMode="decimal"
                 placeholder="Ex: 85"
                 value={area}
@@ -186,6 +220,7 @@ export const BudgetForm = () => {
         <BudgetResult
           category={generated.category}
           result={generated.result}
+          pricing={generated.pricing}
           onClear={() => {
             setGenerated(null);
             setFeedback('Resultado limpo. Você pode gerar um novo orçamento.');

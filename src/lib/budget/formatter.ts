@@ -1,22 +1,25 @@
-import type { BudgetCategory, BudgetResultJson } from '@/types/budget';
-
-const categoryLabel: Record<BudgetCategory, string> = {
-  fachada: 'Fachada',
-  pintura: 'Pintura',
-  drywall: 'Drywall',
-  hidraulica: 'Hidráulica',
-  'reforma-geral': 'Reforma geral',
-};
+import { formatCurrency, getCategoryLabel } from '@/lib/budget/presentation';
+import type { BudgetCategory, BudgetResultJson, PricingResult } from '@/types/budget';
 
 const formatSection = (title: string, entries: string[]) => {
   const lines = entries.map((item) => `- ${item}`).join('\n');
   return `${title}:\n${lines}`;
 };
 
-export const formatBudgetText = (category: BudgetCategory, result: BudgetResultJson) =>
+const formatFinancialSummary = (pricing: PricingResult) =>
+  [
+    'Resumo financeiro:',
+    `- Materiais: ${formatCurrency(pricing.materialSubtotal)}`,
+    `- Mão de obra: ${formatCurrency(pricing.laborSubtotal)}`,
+    `- Mobilização: ${formatCurrency(pricing.mobilizationCost)}`,
+    `- Adicionais (complexidade/acesso/contingência): ${formatCurrency(pricing.additionalCost)}`,
+    `- Total estimado: ${formatCurrency(pricing.totalCost)}`,
+  ].join('\n');
+
+export const formatBudgetText = (category: BudgetCategory, result: BudgetResultJson, pricing?: PricingResult) =>
   [
     'Orçamento técnico gerado',
-    `Categoria: ${categoryLabel[category]}`,
+    `Categoria: ${getCategoryLabel(category)}`,
     '',
     formatSection('Diagnóstico', result.diagnostico),
     '',
@@ -29,4 +32,5 @@ export const formatBudgetText = (category: BudgetCategory, result: BudgetResultJ
     formatSection('Cronograma', result.cronograma),
     '',
     formatSection('Observações', result.observacoes),
+    ...(pricing ? ['', formatFinancialSummary(pricing)] : []),
   ].join('\n');

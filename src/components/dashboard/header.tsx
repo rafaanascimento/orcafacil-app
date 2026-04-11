@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { SafeImage } from '@/components/ui/safe-image';
@@ -10,14 +11,50 @@ interface DashboardHeaderProps {
   userEmail: string;
 }
 
+const clearStaleAuthStorage = () => {
+  try {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith('sb-') && key.endsWith('-auth-token')) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // storage may be unavailable in restricted contexts.
+  }
+};
+
 export const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
   const router = useRouter();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.replace('/login');
-    router.refresh();
+    setLogoutError(null);
+    setIsLoggingOut(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
+
+      clearStaleAuthStorage();
+
+      if (error) {
+        router.replace('/login?reason=session_expired');
+      } else {
+        router.replace('/login?reason=signed_out');
+      }
+    } catch {
+      clearStaleAuthStorage();
+      setLogoutError('Falha ao encerrar sessão localmente. Redirecionando para login...');
+      router.replace('/login?reason=session_expired');
+    } finally {
+      router.refresh();
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -47,13 +84,15 @@ export const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
           </Link>
           <Button
             onClick={handleLogout}
+            isLoading={isLoggingOut}
             variant="ghost"
-            className="h-8 w-auto whitespace-nowrap rounded-lg border border-white/20 bg-white/5 px-3 text-xs font-medium text-blue-50/95 hover:bg-white/15 sm:h-10 sm:rounded-xl sm:px-4 sm:text-sm sm:font-semibold"
+            className="h-8 w-auto whitespace-nowrap rounded-lg border border-white/55 bg-white/20 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-white/30 sm:h-10 sm:rounded-xl sm:px-4 sm:text-sm"
           >
             Sair
           </Button>
         </div>
       </div>
+      {logoutError && <p className="mt-2 text-xs text-blue-100/95">{logoutError}</p>}
     </header>
   );
 };

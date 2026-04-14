@@ -70,6 +70,17 @@ export const BudgetResult = ({ category, result, pricing, onClear }: BudgetResul
 
         {copyError && <p className="text-sm text-red-600">{copyError}</p>}
 
+        {result.executive && (
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-primary">Visão executiva</h3>
+            <div className="grid gap-2 text-sm text-gray-700 sm:grid-cols-2">
+              <p><strong>Serviço:</strong> {result.executive.service}</p>
+              <p><strong>Área:</strong> {result.executive.area} m²</p>
+              <p className="sm:col-span-2"><strong>Objetivo:</strong> {result.executive.objective}</p>
+            </div>
+          </div>
+        )}
+
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
           <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-emerald-700">Resumo financeiro</h3>
           <div className="grid gap-2 text-sm text-gray-700 sm:grid-cols-3">

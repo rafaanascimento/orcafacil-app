@@ -1,11 +1,13 @@
+import { familyProfiles } from '@/data/pricing/families';
 import { drywallTemplate } from '@/data/templates/drywall';
 import { fachadaTemplate } from '@/data/templates/fachada';
 import { hidraulicaTemplate } from '@/data/templates/hidraulica';
 import { pinturaTemplate } from '@/data/templates/pintura';
 import { reformaGeralTemplate } from '@/data/templates/reforma-geral';
 import { classifyBudgetCategory } from '@/lib/budget/classifiers';
+import { getBudgetFamily } from '@/lib/budget/presentation';
 import { calculateBudget } from '@/lib/pricing/calculate-budget';
-import type { BudgetCategory, BudgetTemplate, GenerateBudgetInput, GeneratedBudget } from '@/types/budget';
+import type { BudgetCategory, BudgetTemplate, GenerateBudgetInput, GeneratedBudget, TechnicalBudgetCategory } from '@/types/budget';
 
 const templateMap: Record<BudgetCategory, BudgetTemplate> = {
   pintura_interna: pinturaTemplate,
@@ -14,6 +16,7 @@ const templateMap: Record<BudgetCategory, BudgetTemplate> = {
   percussao_irata: fachadaTemplate,
   fachada_ceramica: fachadaTemplate,
   fachada_textura: fachadaTemplate,
+  impermeabilizacao_reservatorio: hidraulicaTemplate,
   fachada: fachadaTemplate,
   pintura: pinturaTemplate,
   drywall: drywallTemplate,
@@ -22,16 +25,19 @@ const templateMap: Record<BudgetCategory, BudgetTemplate> = {
 };
 
 const complexityLabels = {
-  baixa: 'Complexidade baixa: execução mais direta e com menor interferência.',
-  media: 'Complexidade média: requer maior atenção técnica e coordenação.',
-  alta: 'Complexidade alta: demanda planejamento ampliado e gestão rigorosa.',
+  baixa: 'Complexidade baixa: execução direta com menor interferência operacional.',
+  media: 'Complexidade média: exige coordenação técnica moderada.',
+  alta: 'Complexidade alta: demanda planejamento ampliado e maior controle de execução.',
 } as const;
 
-const areaHint = (area: number) => {
-  if (area <= 30) return 'Área enxuta com foco em execução ágil.';
-  if (area <= 100) return 'Área intermediária com necessidade de planejamento por etapas.';
-  return 'Área extensa com logística e organização de equipe ampliadas.';
-};
+const money = (value: number) =>
+  value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+
+const isTechnicalCategory = (category: BudgetCategory): category is TechnicalBudgetCategory =>
+  category in familyProfiles;
 
 const money = (value: number) =>
   value.toLocaleString('pt-BR', {
@@ -41,40 +47,63 @@ const money = (value: number) =>
 
 export const generateBudget = ({ description, area, complexity }: GenerateBudgetInput): GeneratedBudget => {
   const category = classifyBudgetCategory(description);
+  const pricing = calculateBudget({ category, area, complexity });
+
+  if (isTechnicalCategory(category)) {
+    const profile = familyProfiles[category];
+
+    return {
+      category,
+      pricing,
+      result: {
+        pricing,
+        executive: {
+          service: profile.serviceName,
+          family: getBudgetFamily(category),
+          objective: profile.objective,
+          area,
+        },
+        diagnostico: [
+          `Serviço: ${profile.serviceName}.`,
+          `Área de referência: ${area} m².`,
+          `Objetivo: ${profile.objective}`,
+        ],
+        escopo: profile.scope,
+        materiais: pricing.materials.map((item) => `${item.name}: ${item.quantity} ${item.unit}.`),
+        mao_de_obra: [
+          ...pricing.labor.map((item) => `${item.name}: ${item.quantity} ${item.unit}.`),
+          complexityLabels[complexity],
+        ],
+        cronograma: profile.schedule[complexity],
+        observacoes: [
+          ...profile.observations,
+          ...pricing.notes,
+          `Composição de custos preliminar — Materiais: ${money(pricing.materialSubtotal)}, Mão de obra: ${money(pricing.laborSubtotal)}, Total estimado: ${money(pricing.totalCost)}.`,
+          'Orçamento executivo preliminar sujeito à vistoria técnica de validação.',
+        ],
+      },
+    };
+  }
+
   const template = templateMap[category] ?? reformaGeralTemplate;
-  const pricing = calculateBudget({
-    category,
-    area,
-    complexity,
-  });
 
   return {
     category,
     pricing,
     result: {
       pricing,
-      diagnostico: [
-        ...template.diagnostico,
-        `Resumo da solicitação: ${description.trim()}`,
-        areaHint(area),
-      ],
+      executive: {
+        service: 'Serviço Técnico Geral',
+        family: getBudgetFamily(category),
+        objective: 'Consolidar escopo técnico preliminar para validação em vistoria.',
+        area,
+      },
+      diagnostico: [...template.diagnostico, `Resumo da solicitação: ${description.trim()}`],
       escopo: template.escopo,
-      materiais: [
-        ...template.materiais,
-        ...pricing.materials.slice(0, 4).map((item) => `${item.name}: ${item.quantity} ${item.unit}.`),
-      ],
-      mao_de_obra: [
-        ...template.mao_de_obra,
-        complexityLabels[complexity],
-        ...pricing.labor.map((item) => `${item.name}: ${item.quantity} ${item.unit}.`),
-      ],
+      materiais: template.materiais,
+      mao_de_obra: [...template.mao_de_obra, complexityLabels[complexity]],
       cronograma: template.cronograma[complexity],
-      observacoes: [
-        ...template.observacoes,
-        ...pricing.notes,
-        `Resumo financeiro preliminar — Materiais: ${money(pricing.materialSubtotal)}, Mão de obra: ${money(pricing.laborSubtotal)}, Mobilização: ${money(pricing.mobilizationCost)}, Total estimado: ${money(pricing.totalCost)}.`,
-        'Valores finais devem ser confirmados após vistoria técnica.',
-      ],
+      observacoes: [...template.observacoes, 'Valores finais devem ser confirmados após vistoria técnica.'],
     },
   };
 };

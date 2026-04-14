@@ -6,7 +6,8 @@ export type TechnicalBudgetCategory =
   | 'percussao_simples'
   | 'percussao_irata'
   | 'fachada_ceramica'
-  | 'fachada_textura';
+  | 'fachada_textura'
+  | 'impermeabilizacao_reservatorio';
 
 export type LegacyBudgetCategory =
   | 'fachada'
@@ -16,6 +17,12 @@ export type LegacyBudgetCategory =
   | 'reforma-geral';
 
 export type BudgetCategory = TechnicalBudgetCategory | LegacyBudgetCategory;
+export type BudgetFamily =
+  | 'Teste de Percussão'
+  | 'Reforma em Fachadas'
+  | 'Pintura Geral'
+  | 'Impermeabilização de Reservatórios'
+  | 'Serviços Gerais';
 
 export type AccessType = 'simples' | 'andaime' | 'balancim' | 'irata';
 
@@ -53,6 +60,13 @@ export interface PricingResult {
   notes: string[];
 }
 
+export interface BudgetExecutiveSummary {
+  service: string;
+  family: BudgetFamily;
+  objective: string;
+  area: number;
+}
+
 export interface BudgetResultJson {
   diagnostico: string[];
   escopo: string[];
@@ -61,6 +75,7 @@ export interface BudgetResultJson {
   cronograma: string[];
   observacoes: string[];
   pricing?: PricingResult;
+  executive?: BudgetExecutiveSummary;
 }
 
 export interface BudgetTemplate {

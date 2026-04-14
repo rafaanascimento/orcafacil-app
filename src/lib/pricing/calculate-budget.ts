@@ -17,6 +17,7 @@ const technicalCategorySet = new Set<TechnicalBudgetCategory>([
   'percussao_irata',
   'fachada_ceramica',
   'fachada_textura',
+  'impermeabilizacao_reservatorio',
 ]);
 
 const toTechnicalCategory = (category: BudgetCategory): TechnicalBudgetCategory | null =>

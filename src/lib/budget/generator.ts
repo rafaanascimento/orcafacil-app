@@ -39,6 +39,12 @@ const money = (value: number) =>
 const isTechnicalCategory = (category: BudgetCategory): category is TechnicalBudgetCategory =>
   category in familyProfiles;
 
+const money = (value: number) =>
+  value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+
 export const generateBudget = ({ description, area, complexity }: GenerateBudgetInput): GeneratedBudget => {
   const category = classifyBudgetCategory(description);
   const pricing = calculateBudget({ category, area, complexity });

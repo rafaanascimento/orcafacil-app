@@ -1,6 +1,5 @@
 import { baseMobilizationCosts } from '@/data/pricing/base-costs';
-import { categoryCompositions, complexityFactor } from '@/data/pricing/compositions';
-import { laborDatabase, materialsDatabase } from '@/data/inputs/materials';
+import { categoryCompositions } from '@/data/pricing/compositions';
 import type {
   AccessType,
   BudgetCategory,
@@ -26,7 +25,17 @@ interface CalculateBudgetInput {
 
 const surfaceFactor = { novo: 1, regular: 1.2, degradado: 1.5 } as const;
 const accessFactor = { facil: 1, medio: 1.15, dificil: 1.3 } as const;
-const finishFactor = { baixo: 0.92, medio: 1, alto: 1.18 } as const;
+const finishFactor = { baixo: 0.9, medio: 1, alto: 1.25 } as const;
+const complexityFactor = { baixa: 0.95, media: 1, alta: 1.2 } as const;
+
+const materialsDatabase = {
+  tinta_latex: { code: 'tinta_latex', name: 'Tinta Látex', unit: 'lata', price: 120, coverage: 18 },
+  massa_corrida: { code: 'massa_corrida', name: 'Massa Corrida', unit: 'saco', price: 80, consumption: 1.2 },
+} as const;
+
+const laborDatabase = {
+  pintor: { code: 'pintor', name: 'Pintor', unit: 'hora', costPerHour: 25, productivity: 10 },
+} as const;
 
 const technicalCategorySet = new Set<TechnicalBudgetCategory>([
   'pintura_interna',
@@ -62,96 +71,83 @@ export const calculateBudget = ({
   area,
   complexity,
   accessType,
+  propertyType,
   surfaceCondition = 'regular',
   access = 'facil',
   height = 3,
   finishStandard = 'medio',
-  propertyType,
 }: CalculateBudgetInput): PricingResult => {
   const technicalCategory = toTechnicalCategory(category);
+  if (!technicalCategory) return defaultPricingResult(category);
+
   const safeArea = safeNumber(area, 0.1);
-
-  if (!technicalCategory) {
-    return defaultPricingResult(category);
-  }
-
   const composition = categoryCompositions[technicalCategory];
-  const complexityMultiplier = complexityFactor[complexity];
+
   const conditionMultiplier = surfaceFactor[surfaceCondition];
   const accessMultiplier = accessFactor[access];
-  const finishMultiplier = finishFactor[finishStandard];
+  const standardMultiplier = finishFactor[finishStandard];
+  const technicalComplexityMultiplier = complexityFactor[complexity];
   const heightMultiplier = height > 3 ? 1.1 : 1;
+  const appliedFactor = round2(
+    conditionMultiplier * accessMultiplier * standardMultiplier * technicalComplexityMultiplier * heightMultiplier,
+  );
 
-  const paintCoverage = materialsDatabase.tinta_latex.coverage;
-  const puttyConsumption = materialsDatabase.massa_corrida.consumption;
-
-  const materialItems: MaterialItem[] = [
+  const materials: MaterialItem[] = [
     {
-      code: 'tinta_latex',
+      code: materialsDatabase.tinta_latex.code,
       name: materialsDatabase.tinta_latex.name,
       unit: materialsDatabase.tinta_latex.unit,
-      quantity: round2((safeArea / paintCoverage) * conditionMultiplier),
+      quantity: round2(safeArea / materialsDatabase.tinta_latex.coverage),
       unitCost: materialsDatabase.tinta_latex.price,
       totalCost: 0,
     },
     {
-      code: 'massa_corrida',
+      code: materialsDatabase.massa_corrida.code,
       name: materialsDatabase.massa_corrida.name,
       unit: materialsDatabase.massa_corrida.unit,
-      quantity: round2(((safeArea * puttyConsumption) / 20) * conditionMultiplier),
+      quantity: round2((safeArea * materialsDatabase.massa_corrida.consumption) / 20),
       unitCost: materialsDatabase.massa_corrida.price,
       totalCost: 0,
     },
-  ].map((item) => ({ ...item, totalCost: round2(item.quantity * item.unitCost * finishMultiplier) }));
+  ].map((item) => ({ ...item, totalCost: round2(item.quantity * item.unitCost * appliedFactor) }));
 
   const laborHours = round2(safeArea / laborDatabase.pintor.productivity);
-  const laborItems: LaborItem[] = [
+  const labor: LaborItem[] = [
     {
-      code: 'pintor',
+      code: laborDatabase.pintor.code,
       name: laborDatabase.pintor.name,
-      unit: 'hora',
+      unit: laborDatabase.pintor.unit,
       quantity: laborHours,
       unitCost: laborDatabase.pintor.costPerHour,
-      totalCost: round2(laborHours * laborDatabase.pintor.costPerHour * conditionMultiplier * accessMultiplier * heightMultiplier),
+      totalCost: round2(laborHours * laborDatabase.pintor.costPerHour * appliedFactor),
     },
   ];
 
-  const materialSubtotal = round2(materialItems.reduce((sum, item) => sum + item.totalCost, 0));
-  const laborSubtotal = round2(laborItems.reduce((sum, item) => sum + item.totalCost, 0));
+  const materialSubtotal = round2(materials.reduce((total, item) => total + item.totalCost, 0));
+  const laborSubtotal = round2(labor.reduce((total, item) => total + item.totalCost, 0));
 
   const mobilizationKey = accessType ?? composition.defaultMobilization;
   const mobilizationCost = mobilizationKey ? round2(baseMobilizationCosts[mobilizationKey]) : 0;
-
-  const complexityCost = round2((materialSubtotal + laborSubtotal) * (complexityMultiplier - 1));
-  const accessCost = round2((materialSubtotal + laborSubtotal) * (accessMultiplier - 1));
   const contingencyCost = round2((materialSubtotal + laborSubtotal) * 0.03);
-
-  const baseTotal = round2(
-    materialSubtotal + laborSubtotal + mobilizationCost + complexityCost + accessCost + contingencyCost,
-  );
-
-  const minimumAdjustment = composition.minCost ? round2(Math.max(composition.minCost - baseTotal, 0)) : 0;
-  const additionalCost = round2(complexityCost + accessCost + contingencyCost + minimumAdjustment);
-  const totalCost = round2(materialSubtotal + laborSubtotal + mobilizationCost + additionalCost);
+  const totalCost = round2(materialSubtotal + laborSubtotal + mobilizationCost + contingencyCost);
 
   return {
     category,
-    materials: materialItems,
-    labor: laborItems,
+    materials,
+    labor,
     materialSubtotal,
     laborSubtotal,
     mobilizationCost,
-    complexityCost,
-    accessCost,
+    complexityCost: round2((materialSubtotal + laborSubtotal) * (technicalComplexityMultiplier - 1)),
+    accessCost: round2((materialSubtotal + laborSubtotal) * (accessMultiplier - 1)),
     contingencyCost,
-    minimumAdjustment,
-    additionalCost,
+    minimumAdjustment: 0,
+    additionalCost: contingencyCost,
     totalCost,
     notes: [
       ...composition.notes,
       `Tipo de imóvel: ${propertyType ?? 'não informado'}.`,
-      `Fatores aplicados — Condição (${surfaceCondition}: ${conditionMultiplier}), Acesso (${access}: ${accessMultiplier}), Altura (${height}m: ${heightMultiplier}), Acabamento (${finishStandard}: ${finishMultiplier}).`,
-      `Fator de complexidade aplicado: ${complexity} (${complexityMultiplier}).`,
+      `Fatores técnicos aplicados: condição ${surfaceCondition} (${conditionMultiplier}), acesso ${access} (${accessMultiplier}), acabamento ${finishStandard} (${standardMultiplier}), complexidade ${complexity} (${technicalComplexityMultiplier}), altura ${height}m (${heightMultiplier}).`,
     ],
   };
 };

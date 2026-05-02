@@ -215,11 +215,26 @@ export const BudgetForm = () => {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input value={propertyType} onChange={(e) => setPropertyType(e.target.value as NonNullable<GenerateBudgetInput['propertyType']>)} placeholder="Tipo de imóvel: residencial/comercial" />
-            <Input value={surfaceCondition} onChange={(e) => setSurfaceCondition(e.target.value as NonNullable<GenerateBudgetInput['surfaceCondition']>)} placeholder="Condição: novo/regular/degradado" />
-            <Input value={access} onChange={(e) => setAccess(e.target.value as NonNullable<GenerateBudgetInput['access']>)} placeholder="Acesso: facil/medio/dificil" />
-            <Input type="number" min={1} step={0.1} value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Altura (m)" />
-            <Input value={finishStandard} onChange={(e) => setFinishStandard(e.target.value as NonNullable<GenerateBudgetInput['finishStandard']>)} placeholder="Padrão: baixo/medio/alto" />
+            <label className="space-y-1">
+              <span className="text-sm font-semibold text-ink">Tipo de imóvel</span>
+              <select className="flex h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-ink shadow-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10" value={propertyType} onChange={(e) => setPropertyType(e.target.value as NonNullable<GenerateBudgetInput['propertyType']>)}><option value="residencial">Residencial</option><option value="comercial">Comercial</option></select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-semibold text-ink">Condição da superfície</span>
+              <select className="flex h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-ink shadow-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10" value={surfaceCondition} onChange={(e) => setSurfaceCondition(e.target.value as NonNullable<GenerateBudgetInput['surfaceCondition']>)}><option value="novo">Novo</option><option value="regular">Regular</option><option value="degradado">Degradado</option></select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-semibold text-ink">Acesso ao local</span>
+              <select className="flex h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-ink shadow-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10" value={access} onChange={(e) => setAccess(e.target.value as NonNullable<GenerateBudgetInput['access']>)}><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-semibold text-ink">Altura média (m)</span>
+              <Input type="number" min={1} step={0.1} value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Ex: 3" />
+            </label>
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-sm font-semibold text-ink">Padrão de acabamento</span>
+              <select className="flex h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-ink shadow-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10" value={finishStandard} onChange={(e) => setFinishStandard(e.target.value as NonNullable<GenerateBudgetInput['finishStandard']>)}><option value="baixo">Baixo</option><option value="medio">Médio</option><option value="alto">Alto</option></select>
+            </label>
           </div>
 
 

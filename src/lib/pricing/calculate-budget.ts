@@ -1,14 +1,41 @@
-import { baseLaborCosts, baseMaterialCosts, baseMobilizationCosts } from '@/data/pricing/base-costs';
-import { categoryCompositions, complexityFactor } from '@/data/pricing/compositions';
-import type { AccessType, BudgetCategory, BudgetComplexity, LaborItem, MaterialItem, PricingResult, TechnicalBudgetCategory } from '@/types/budget';
-import { daysFromProductivity, round2, safeNumber } from './helpers';
+import { baseMobilizationCosts } from '@/data/pricing/base-costs';
+import { categoryCompositions } from '@/data/pricing/compositions';
+import type {
+  AccessType,
+  BudgetCategory,
+  BudgetComplexity,
+  LaborItem,
+  MaterialItem,
+  PricingResult,
+  TechnicalBudgetCategory,
+} from '@/types/budget';
+import { round2, safeNumber } from './helpers';
 
 interface CalculateBudgetInput {
   category: BudgetCategory;
   area: number;
   complexity: BudgetComplexity;
   accessType?: AccessType;
+  propertyType?: 'residencial' | 'comercial';
+  surfaceCondition?: 'novo' | 'regular' | 'degradado';
+  access?: 'facil' | 'medio' | 'dificil';
+  height?: number;
+  finishStandard?: 'baixo' | 'medio' | 'alto';
 }
+
+const surfaceFactor = { novo: 1, regular: 1.2, degradado: 1.5 } as const;
+const accessFactor = { facil: 1, medio: 1.15, dificil: 1.3 } as const;
+const finishFactor = { baixo: 0.9, medio: 1, alto: 1.25 } as const;
+const complexityFactor = { baixa: 0.95, media: 1, alta: 1.2 } as const;
+
+const materialsDatabase = {
+  tinta_latex: { code: 'tinta_latex', name: 'Tinta Látex', unit: 'lata', price: 120, coverage: 18 },
+  massa_corrida: { code: 'massa_corrida', name: 'Massa Corrida', unit: 'saco', price: 80, consumption: 1.2 },
+} as const;
+
+const laborDatabase = {
+  pintor: { code: 'pintor', name: 'Pintor', unit: 'hora', costPerHour: 25, productivity: 10 },
+} as const;
 
 const technicalCategorySet = new Set<TechnicalBudgetCategory>([
   'pintura_interna',
@@ -21,9 +48,7 @@ const technicalCategorySet = new Set<TechnicalBudgetCategory>([
 ]);
 
 const toTechnicalCategory = (category: BudgetCategory): TechnicalBudgetCategory | null =>
-  technicalCategorySet.has(category as TechnicalBudgetCategory)
-    ? (category as TechnicalBudgetCategory)
-    : null;
+  technicalCategorySet.has(category as TechnicalBudgetCategory) ? (category as TechnicalBudgetCategory) : null;
 
 const defaultPricingResult = (category: BudgetCategory): PricingResult => ({
   category,
@@ -46,86 +71,83 @@ export const calculateBudget = ({
   area,
   complexity,
   accessType,
+  propertyType,
+  surfaceCondition = 'regular',
+  access = 'facil',
+  height = 3,
+  finishStandard = 'medio',
 }: CalculateBudgetInput): PricingResult => {
   const technicalCategory = toTechnicalCategory(category);
+  if (!technicalCategory) return defaultPricingResult(category);
+
   const safeArea = safeNumber(area, 0.1);
-
-  if (!technicalCategory) {
-    return defaultPricingResult(category);
-  }
-
   const composition = categoryCompositions[technicalCategory];
-  const complexityMultiplier = complexityFactor[complexity];
 
-  const materialItems: MaterialItem[] = composition.materials.map((item) => {
-    const costRef = baseMaterialCosts[item.code as keyof typeof baseMaterialCosts];
-    const quantity = round2(safeArea * item.consumptionPerM2);
-    const totalCost = round2(quantity * costRef.unitCost);
+  const conditionMultiplier = surfaceFactor[surfaceCondition];
+  const accessMultiplier = accessFactor[access];
+  const standardMultiplier = finishFactor[finishStandard];
+  const technicalComplexityMultiplier = complexityFactor[complexity];
+  const heightMultiplier = height > 3 ? 1.1 : 1;
+  const appliedFactor = round2(
+    conditionMultiplier * accessMultiplier * standardMultiplier * technicalComplexityMultiplier * heightMultiplier,
+  );
 
-    return {
-      code: item.code,
-      name: costRef.name,
-      unit: costRef.unit,
-      quantity,
-      unitCost: costRef.unitCost,
-      totalCost,
-    };
-  });
+  const materials: MaterialItem[] = [
+    {
+      code: materialsDatabase.tinta_latex.code,
+      name: materialsDatabase.tinta_latex.name,
+      unit: materialsDatabase.tinta_latex.unit,
+      quantity: round2(safeArea / materialsDatabase.tinta_latex.coverage),
+      unitCost: materialsDatabase.tinta_latex.price,
+      totalCost: 0,
+    },
+    {
+      code: materialsDatabase.massa_corrida.code,
+      name: materialsDatabase.massa_corrida.name,
+      unit: materialsDatabase.massa_corrida.unit,
+      quantity: round2((safeArea * materialsDatabase.massa_corrida.consumption) / 20),
+      unitCost: materialsDatabase.massa_corrida.price,
+      totalCost: 0,
+    },
+  ].map((item) => ({ ...item, totalCost: round2(item.quantity * item.unitCost * appliedFactor) }));
 
-  const laborItems: LaborItem[] = composition.labor.map((item) => {
-    const costRef = baseLaborCosts[item.code as keyof typeof baseLaborCosts];
-    const days = item.fixedDays ?? daysFromProductivity(safeArea, item.productivityM2PerDay);
-    const quantity = round2(days);
-    const totalCost = round2(quantity * costRef.unitCost);
+  const laborHours = round2(safeArea / laborDatabase.pintor.productivity);
+  const labor: LaborItem[] = [
+    {
+      code: laborDatabase.pintor.code,
+      name: laborDatabase.pintor.name,
+      unit: laborDatabase.pintor.unit,
+      quantity: laborHours,
+      unitCost: laborDatabase.pintor.costPerHour,
+      totalCost: round2(laborHours * laborDatabase.pintor.costPerHour * appliedFactor),
+    },
+  ];
 
-    return {
-      code: item.code,
-      name: costRef.name,
-      unit: costRef.unit,
-      quantity,
-      unitCost: costRef.unitCost,
-      totalCost,
-    };
-  });
-
-  const materialSubtotal = round2(materialItems.reduce((sum, item) => sum + item.totalCost, 0));
-  const laborSubtotal = round2(laborItems.reduce((sum, item) => sum + item.totalCost, 0));
+  const materialSubtotal = round2(materials.reduce((total, item) => total + item.totalCost, 0));
+  const laborSubtotal = round2(labor.reduce((total, item) => total + item.totalCost, 0));
 
   const mobilizationKey = accessType ?? composition.defaultMobilization;
   const mobilizationCost = mobilizationKey ? round2(baseMobilizationCosts[mobilizationKey]) : 0;
-
-  const complexityCost = round2((materialSubtotal + laborSubtotal) * (complexityMultiplier - 1));
-  const accessCost = composition.accessAdditionalByM2 ? round2(safeArea * composition.accessAdditionalByM2) : 0;
   const contingencyCost = round2((materialSubtotal + laborSubtotal) * 0.03);
-
-  const baseTotal = round2(
-    materialSubtotal + laborSubtotal + mobilizationCost + complexityCost + accessCost + contingencyCost,
-  );
-
-  const minimumAdjustment = composition.minCost ? round2(Math.max(composition.minCost - baseTotal, 0)) : 0;
-  const additionalCost = round2(complexityCost + accessCost + contingencyCost + minimumAdjustment);
-  const totalCost = round2(materialSubtotal + laborSubtotal + mobilizationCost + additionalCost);
+  const totalCost = round2(materialSubtotal + laborSubtotal + mobilizationCost + contingencyCost);
 
   return {
     category,
-    materials: materialItems,
-    labor: laborItems,
+    materials,
+    labor,
     materialSubtotal,
     laborSubtotal,
     mobilizationCost,
-    complexityCost,
-    accessCost,
+    complexityCost: round2((materialSubtotal + laborSubtotal) * (technicalComplexityMultiplier - 1)),
+    accessCost: round2((materialSubtotal + laborSubtotal) * (accessMultiplier - 1)),
     contingencyCost,
-    minimumAdjustment,
-    additionalCost,
+    minimumAdjustment: 0,
+    additionalCost: contingencyCost,
     totalCost,
     notes: [
       ...composition.notes,
-      `Fator de complexidade aplicado: ${complexity} (${complexityMultiplier}).`,
-      `Adicionais detalhados — Complexidade: R$ ${complexityCost.toFixed(2)}, Acesso: R$ ${accessCost.toFixed(2)}, Contingência: R$ ${contingencyCost.toFixed(2)}, Ajuste de mínimo: R$ ${minimumAdjustment.toFixed(2)}.`,
-      composition.minCost
-        ? `Custo mínimo operacional de referência: R$ ${composition.minCost.toFixed(2)}.`
-        : 'Sem custo mínimo obrigatório para esta categoria.',
+      `Tipo de imóvel: ${propertyType ?? 'não informado'}.`,
+      `Fatores técnicos aplicados: condição ${surfaceCondition} (${conditionMultiplier}), acesso ${access} (${accessMultiplier}), acabamento ${finishStandard} (${standardMultiplier}), complexidade ${complexity} (${technicalComplexityMultiplier}), altura ${height}m (${heightMultiplier}).`,
     ],
   };
 };

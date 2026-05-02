@@ -1,14 +1,32 @@
-import { baseLaborCosts, baseMaterialCosts, baseMobilizationCosts } from '@/data/pricing/base-costs';
+import { baseMobilizationCosts } from '@/data/pricing/base-costs';
 import { categoryCompositions, complexityFactor } from '@/data/pricing/compositions';
-import type { AccessType, BudgetCategory, BudgetComplexity, LaborItem, MaterialItem, PricingResult, TechnicalBudgetCategory } from '@/types/budget';
-import { daysFromProductivity, round2, safeNumber } from './helpers';
+import { laborDatabase, materialsDatabase } from '@/data/inputs/materials';
+import type {
+  AccessType,
+  BudgetCategory,
+  BudgetComplexity,
+  LaborItem,
+  MaterialItem,
+  PricingResult,
+  TechnicalBudgetCategory,
+} from '@/types/budget';
+import { round2, safeNumber } from './helpers';
 
 interface CalculateBudgetInput {
   category: BudgetCategory;
   area: number;
   complexity: BudgetComplexity;
   accessType?: AccessType;
+  propertyType?: 'residencial' | 'comercial';
+  surfaceCondition?: 'novo' | 'regular' | 'degradado';
+  access?: 'facil' | 'medio' | 'dificil';
+  height?: number;
+  finishStandard?: 'baixo' | 'medio' | 'alto';
 }
+
+const surfaceFactor = { novo: 1, regular: 1.2, degradado: 1.5 } as const;
+const accessFactor = { facil: 1, medio: 1.15, dificil: 1.3 } as const;
+const finishFactor = { baixo: 0.92, medio: 1, alto: 1.18 } as const;
 
 const technicalCategorySet = new Set<TechnicalBudgetCategory>([
   'pintura_interna',
@@ -21,9 +39,7 @@ const technicalCategorySet = new Set<TechnicalBudgetCategory>([
 ]);
 
 const toTechnicalCategory = (category: BudgetCategory): TechnicalBudgetCategory | null =>
-  technicalCategorySet.has(category as TechnicalBudgetCategory)
-    ? (category as TechnicalBudgetCategory)
-    : null;
+  technicalCategorySet.has(category as TechnicalBudgetCategory) ? (category as TechnicalBudgetCategory) : null;
 
 const defaultPricingResult = (category: BudgetCategory): PricingResult => ({
   category,
@@ -46,6 +62,11 @@ export const calculateBudget = ({
   area,
   complexity,
   accessType,
+  surfaceCondition = 'regular',
+  access = 'facil',
+  height = 3,
+  finishStandard = 'medio',
+  propertyType,
 }: CalculateBudgetInput): PricingResult => {
   const technicalCategory = toTechnicalCategory(category);
   const safeArea = safeNumber(area, 0.1);
@@ -56,37 +77,44 @@ export const calculateBudget = ({
 
   const composition = categoryCompositions[technicalCategory];
   const complexityMultiplier = complexityFactor[complexity];
+  const conditionMultiplier = surfaceFactor[surfaceCondition];
+  const accessMultiplier = accessFactor[access];
+  const finishMultiplier = finishFactor[finishStandard];
+  const heightMultiplier = height > 3 ? 1.1 : 1;
 
-  const materialItems: MaterialItem[] = composition.materials.map((item) => {
-    const costRef = baseMaterialCosts[item.code as keyof typeof baseMaterialCosts];
-    const quantity = round2(safeArea * item.consumptionPerM2);
-    const totalCost = round2(quantity * costRef.unitCost);
+  const paintCoverage = materialsDatabase.tinta_latex.coverage;
+  const puttyConsumption = materialsDatabase.massa_corrida.consumption;
 
-    return {
-      code: item.code,
-      name: costRef.name,
-      unit: costRef.unit,
-      quantity,
-      unitCost: costRef.unitCost,
-      totalCost,
-    };
-  });
+  const materialItems: MaterialItem[] = [
+    {
+      code: 'tinta_latex',
+      name: materialsDatabase.tinta_latex.name,
+      unit: materialsDatabase.tinta_latex.unit,
+      quantity: round2((safeArea / paintCoverage) * conditionMultiplier),
+      unitCost: materialsDatabase.tinta_latex.price,
+      totalCost: 0,
+    },
+    {
+      code: 'massa_corrida',
+      name: materialsDatabase.massa_corrida.name,
+      unit: materialsDatabase.massa_corrida.unit,
+      quantity: round2(((safeArea * puttyConsumption) / 20) * conditionMultiplier),
+      unitCost: materialsDatabase.massa_corrida.price,
+      totalCost: 0,
+    },
+  ].map((item) => ({ ...item, totalCost: round2(item.quantity * item.unitCost * finishMultiplier) }));
 
-  const laborItems: LaborItem[] = composition.labor.map((item) => {
-    const costRef = baseLaborCosts[item.code as keyof typeof baseLaborCosts];
-    const days = item.fixedDays ?? daysFromProductivity(safeArea, item.productivityM2PerDay);
-    const quantity = round2(days);
-    const totalCost = round2(quantity * costRef.unitCost);
-
-    return {
-      code: item.code,
-      name: costRef.name,
-      unit: costRef.unit,
-      quantity,
-      unitCost: costRef.unitCost,
-      totalCost,
-    };
-  });
+  const laborHours = round2(safeArea / laborDatabase.pintor.productivity);
+  const laborItems: LaborItem[] = [
+    {
+      code: 'pintor',
+      name: laborDatabase.pintor.name,
+      unit: 'hora',
+      quantity: laborHours,
+      unitCost: laborDatabase.pintor.costPerHour,
+      totalCost: round2(laborHours * laborDatabase.pintor.costPerHour * conditionMultiplier * accessMultiplier * heightMultiplier),
+    },
+  ];
 
   const materialSubtotal = round2(materialItems.reduce((sum, item) => sum + item.totalCost, 0));
   const laborSubtotal = round2(laborItems.reduce((sum, item) => sum + item.totalCost, 0));
@@ -95,7 +123,7 @@ export const calculateBudget = ({
   const mobilizationCost = mobilizationKey ? round2(baseMobilizationCosts[mobilizationKey]) : 0;
 
   const complexityCost = round2((materialSubtotal + laborSubtotal) * (complexityMultiplier - 1));
-  const accessCost = composition.accessAdditionalByM2 ? round2(safeArea * composition.accessAdditionalByM2) : 0;
+  const accessCost = round2((materialSubtotal + laborSubtotal) * (accessMultiplier - 1));
   const contingencyCost = round2((materialSubtotal + laborSubtotal) * 0.03);
 
   const baseTotal = round2(
@@ -121,11 +149,9 @@ export const calculateBudget = ({
     totalCost,
     notes: [
       ...composition.notes,
+      `Tipo de imóvel: ${propertyType ?? 'não informado'}.`,
+      `Fatores aplicados — Condição (${surfaceCondition}: ${conditionMultiplier}), Acesso (${access}: ${accessMultiplier}), Altura (${height}m: ${heightMultiplier}), Acabamento (${finishStandard}: ${finishMultiplier}).`,
       `Fator de complexidade aplicado: ${complexity} (${complexityMultiplier}).`,
-      `Adicionais detalhados — Complexidade: R$ ${complexityCost.toFixed(2)}, Acesso: R$ ${accessCost.toFixed(2)}, Contingência: R$ ${contingencyCost.toFixed(2)}, Ajuste de mínimo: R$ ${minimumAdjustment.toFixed(2)}.`,
-      composition.minCost
-        ? `Custo mínimo operacional de referência: R$ ${composition.minCost.toFixed(2)}.`
-        : 'Sem custo mínimo obrigatório para esta categoria.',
     ],
   };
 };

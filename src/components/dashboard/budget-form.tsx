@@ -4,7 +4,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { generateBudget } from '@/lib/budget/generator';
 import { getStorageCategory } from '@/lib/budget/presentation';
 import { createClient } from '@/lib/supabase/client';
-import type { BudgetComplexity, GeneratedBudget } from '@/types/budget';
+import type { BudgetComplexity, GenerateBudgetInput, GeneratedBudget } from '@/types/budget';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,12 @@ export const BudgetForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [areaTouched, setAreaTouched] = useState(false);
+
+  const [propertyType, setPropertyType] = useState<NonNullable<GenerateBudgetInput['propertyType']>>('residencial');
+  const [surfaceCondition, setSurfaceCondition] = useState<NonNullable<GenerateBudgetInput['surfaceCondition']>>('regular');
+  const [access, setAccess] = useState<NonNullable<GenerateBudgetInput['access']>>('facil');
+  const [height, setHeight] = useState('3');
+  const [finishStandard, setFinishStandard] = useState<NonNullable<GenerateBudgetInput['finishStandard']>>('medio');
 
   const parsedArea = useMemo(() => {
     const value = Number(area);
@@ -59,6 +65,11 @@ export const BudgetForm = () => {
       description,
       area: parsedArea,
       complexity,
+      propertyType,
+      surfaceCondition,
+      access,
+      height: Number(height) || 3,
+      finishStandard,
     });
 
     setGenerated(budget);
@@ -202,6 +213,15 @@ export const BudgetForm = () => {
               </p>
             </div>
           </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input value={propertyType} onChange={(e) => setPropertyType(e.target.value as NonNullable<GenerateBudgetInput['propertyType']>)} placeholder="Tipo de imóvel: residencial/comercial" />
+            <Input value={surfaceCondition} onChange={(e) => setSurfaceCondition(e.target.value as NonNullable<GenerateBudgetInput['surfaceCondition']>)} placeholder="Condição: novo/regular/degradado" />
+            <Input value={access} onChange={(e) => setAccess(e.target.value as NonNullable<GenerateBudgetInput['access']>)} placeholder="Acesso: facil/medio/dificil" />
+            <Input type="number" min={1} step={0.1} value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Altura (m)" />
+            <Input value={finishStandard} onChange={(e) => setFinishStandard(e.target.value as NonNullable<GenerateBudgetInput['finishStandard']>)} placeholder="Padrão: baixo/medio/alto" />
+          </div>
+
 
           <Button
             type="submit"

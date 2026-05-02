@@ -7,7 +7,13 @@ import { reformaGeralTemplate } from '@/data/templates/reforma-geral';
 import { classifyBudgetCategory } from '@/lib/budget/classifiers';
 import { getBudgetFamily } from '@/lib/budget/presentation';
 import { calculateBudget } from '@/lib/pricing/calculate-budget';
-import type { BudgetCategory, BudgetTemplate, GenerateBudgetInput, GeneratedBudget, TechnicalBudgetCategory } from '@/types/budget';
+import type {
+  BudgetCategory,
+  BudgetTemplate,
+  GenerateBudgetInput,
+  GeneratedBudget,
+  TechnicalBudgetCategory,
+} from '@/types/budget';
 
 const templateMap: Record<BudgetCategory, BudgetTemplate> = {
   pintura_interna: pinturaTemplate,
@@ -36,16 +42,15 @@ const money = (value: number) =>
     currency: 'BRL',
   });
 
-const isTechnicalCategory = (category: BudgetCategory): category is TechnicalBudgetCategory =>
-  category in familyProfiles;
+const isTechnicalCategory = (
+  category: BudgetCategory
+): category is TechnicalBudgetCategory => category in familyProfiles;
 
-const money = (value: number) =>
-  value.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  });
-
-export const generateBudget = ({ description, area, complexity }: GenerateBudgetInput): GeneratedBudget => {
+export const generateBudget = ({
+  description,
+  area,
+  complexity,
+}: GenerateBudgetInput): GeneratedBudget => {
   const category = classifyBudgetCategory(description);
   const pricing = calculateBudget({ category, area, complexity });
 
@@ -69,16 +74,24 @@ export const generateBudget = ({ description, area, complexity }: GenerateBudget
           `Objetivo: ${profile.objective}`,
         ],
         escopo: profile.scope,
-        materiais: pricing.materials.map((item) => `${item.name}: ${item.quantity} ${item.unit}.`),
+        materiais: pricing.materials.map(
+          (item) => `${item.name}: ${item.quantity} ${item.unit}.`
+        ),
         mao_de_obra: [
-          ...pricing.labor.map((item) => `${item.name}: ${item.quantity} ${item.unit}.`),
+          ...pricing.labor.map(
+            (item) => `${item.name}: ${item.quantity} ${item.unit}.`
+          ),
           complexityLabels[complexity],
         ],
         cronograma: profile.schedule[complexity],
         observacoes: [
           ...profile.observations,
           ...pricing.notes,
-          `Composição de custos preliminar — Materiais: ${money(pricing.materialSubtotal)}, Mão de obra: ${money(pricing.laborSubtotal)}, Total estimado: ${money(pricing.totalCost)}.`,
+          `Composição de custos preliminar — Materiais: ${money(
+            pricing.materialSubtotal
+          )}, Mão de obra: ${money(
+            pricing.laborSubtotal
+          )}, Total estimado: ${money(pricing.totalCost)}.`,
           'Orçamento executivo preliminar sujeito à vistoria técnica de validação.',
         ],
       },
@@ -95,15 +108,25 @@ export const generateBudget = ({ description, area, complexity }: GenerateBudget
       executive: {
         service: 'Serviço Técnico Geral',
         family: getBudgetFamily(category),
-        objective: 'Consolidar escopo técnico preliminar para validação em vistoria.',
+        objective:
+          'Consolidar escopo técnico preliminar para validação em vistoria.',
         area,
       },
-      diagnostico: [...template.diagnostico, `Resumo da solicitação: ${description.trim()}`],
+      diagnostico: [
+        ...template.diagnostico,
+        `Resumo da solicitação: ${description.trim()}`,
+      ],
       escopo: template.escopo,
       materiais: template.materiais,
-      mao_de_obra: [...template.mao_de_obra, complexityLabels[complexity]],
+      mao_de_obra: [
+        ...template.mao_de_obra,
+        complexityLabels[complexity],
+      ],
       cronograma: template.cronograma[complexity],
-      observacoes: [...template.observacoes, 'Valores finais devem ser confirmados após vistoria técnica.'],
+      observacoes: [
+        ...template.observacoes,
+        'Valores finais devem ser confirmados após vistoria técnica.',
+      ],
     },
   };
 };

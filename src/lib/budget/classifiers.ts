@@ -49,6 +49,17 @@ const keywordMap: Record<TechnicalBudgetCategory, string[]> = {
     'grafiato',
     'acabamento texturizado',
   ],
+
+  impermeabilizacao_reservatorio: [
+    'impermeabilizacao de reservatorio',
+    'impermeabilização de reservatório',
+    "caixa d'agua",
+    'caixa de agua',
+    'reservatorio',
+    'reservatório',
+    'manta impermeabilizante',
+    'teste de estanqueidade',
+  ],
 };
 
 const normalize = (value: string) =>

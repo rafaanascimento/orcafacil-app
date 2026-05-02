@@ -40,7 +40,7 @@ export const categoryCompositions: Record<TechnicalBudgetCategory, CategoryCompo
     ],
     minCost: 1800,
     defaultMobilization: 'simples',
-    notes: ['Inclui preparo superficial, massa corrida, selador e pintura final.'],
+    notes: ['Pintura interna com raspagem, lixamento, massa, selador e acabamento.'],
   },
   pintura_externa: {
     materials: [
@@ -56,27 +56,37 @@ export const categoryCompositions: Record<TechnicalBudgetCategory, CategoryCompo
     defaultMobilization: 'andaime',
     accessAdditionalByM2: 6,
     minCost: 2600,
-    notes: ['Produtividade externa reduzida e adicional potencial por acesso.'],
+    notes: ['Pintura externa com proteção de áreas e produtividade reduzida por acesso.'],
   },
   percussao_simples: {
-    materials: [{ code: 'epi_consumiveis', consumptionPerM2: 0.01 }],
+    materials: [
+      { code: 'martelo_borracha', consumptionPerM2: 0.01 },
+      { code: 'insumos_relatorio', consumptionPerM2: 0.01 },
+      { code: 'epi_consumiveis', consumptionPerM2: 0.01 },
+    ],
     labor: [
       { code: 'tecnico_percussao_dia', productivityM2PerDay: 180 },
       { code: 'encarregado_dia', productivityM2PerDay: 320 },
+      { code: 'ajudante_dia', productivityM2PerDay: 260 },
     ],
     defaultMobilization: 'simples',
-    minCost: 2200,
-    notes: ['Inspeção por percussão em área acessível com custo operacional mínimo.'],
+    minCost: 2400,
+    notes: ['Inclui inspeção por percussão, marcação em campo, registro fotográfico e relatório técnico.'],
   },
   percussao_irata: {
-    materials: [{ code: 'epi_consumiveis', consumptionPerM2: 0.03 }],
+    materials: [
+      { code: 'martelo_borracha', consumptionPerM2: 0.015 },
+      { code: 'insumos_relatorio', consumptionPerM2: 0.012 },
+      { code: 'epi_consumiveis', consumptionPerM2: 0.03 },
+    ],
     labor: [
       { code: 'equipe_irata_dia', productivityM2PerDay: 95 },
       { code: 'encarregado_dia', productivityM2PerDay: 260 },
+      { code: 'ajudante_dia', productivityM2PerDay: 180 },
     ],
     defaultMobilization: 'irata',
     minCost: 5400,
-    notes: ['Mobilização IRATA obrigatória e produtividade específica de acesso por corda.'],
+    notes: ['Inspeção com acesso por corda (IRATA), equipe especializada e mobilização obrigatória.'],
   },
   fachada_ceramica: {
     materials: [
@@ -91,7 +101,7 @@ export const categoryCompositions: Record<TechnicalBudgetCategory, CategoryCompo
     ],
     defaultMobilization: 'balancim',
     minCost: 4200,
-    notes: ['Inclui remoção pontual, preparo de base, assentamento, rejunte e limpeza técnica.'],
+    notes: ['Reforma de fachada cerâmica com remoção, regularização, assentamento e limpeza final.'],
   },
   fachada_textura: {
     materials: [
@@ -106,6 +116,21 @@ export const categoryCompositions: Record<TechnicalBudgetCategory, CategoryCompo
     ],
     defaultMobilization: 'andaime',
     minCost: 3600,
-    notes: ['Executa preparação de base, selador, textura e acabamento final.'],
+    notes: ['Reforma de fachada texturizada com preparo de base, regularização e acabamento.'],
+  },
+  impermeabilizacao_reservatorio: {
+    materials: [
+      { code: 'argamassa_polimerica_20kg', consumptionPerM2: 0.22 },
+      { code: 'impermeabilizante_bicomponente_18kg', consumptionPerM2: 0.14 },
+      { code: 'epi_consumiveis', consumptionPerM2: 0.02 },
+    ],
+    labor: [
+      { code: 'impermeabilizador_dia', productivityM2PerDay: 18 },
+      { code: 'servente_dia', productivityM2PerDay: 28 },
+      { code: 'encarregado_dia', productivityM2PerDay: 55 },
+    ],
+    defaultMobilization: 'simples',
+    minCost: 3900,
+    notes: ['Impermeabilização de reservatório com preparo, aplicação do sistema, cura e teste de estanqueidade.'],
   },
 };

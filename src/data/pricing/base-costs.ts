@@ -8,6 +8,10 @@ export const baseMaterialCosts = {
   rejunte_5kg: { name: 'Rejunte 5kg', unit: 'pacote', unitCost: 29 },
   ceramica_m2: { name: 'Cerâmica fachada', unit: 'm²', unitCost: 96 },
   primer_preparo_18l: { name: 'Fundo preparador 18L', unit: 'lata', unitCost: 186 },
+  impermeabilizante_bicomponente_18kg: { name: 'Impermeabilizante bicomponente 18kg', unit: 'kit', unitCost: 329 },
+  argamassa_polimerica_20kg: { name: 'Argamassa polimérica 20kg', unit: 'saco', unitCost: 74 },
+  martelo_borracha: { name: 'Martelo de borracha e acessórios', unit: 'verba', unitCost: 90 },
+  insumos_relatorio: { name: 'Registro fotográfico e relatório técnico', unit: 'verba', unitCost: 160 },
   epi_consumiveis: { name: 'Insumos de proteção e consumo', unit: 'verba', unitCost: 120 },
 } as const;
 
@@ -17,7 +21,9 @@ export const baseLaborCosts = {
   pedreiro_dia: { name: 'Pedreiro', unit: 'diária', unitCost: 320 },
   encarregado_dia: { name: 'Encarregado', unit: 'diária', unitCost: 420 },
   tecnico_percussao_dia: { name: 'Técnico de percussão', unit: 'diária', unitCost: 420 },
+  ajudante_dia: { name: 'Ajudante técnico', unit: 'diária', unitCost: 170 },
   equipe_irata_dia: { name: 'Equipe IRATA', unit: 'diária', unitCost: 1450 },
+  impermeabilizador_dia: { name: 'Impermeabilizador técnico', unit: 'diária', unitCost: 360 },
 } as const;
 
 export const baseMobilizationCosts = {

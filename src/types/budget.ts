@@ -95,6 +95,11 @@ export interface GenerateBudgetInput {
   description: string;
   area: number;
   complexity: BudgetComplexity;
+  propertyType?: 'residencial' | 'comercial';
+  surfaceCondition?: 'novo' | 'regular' | 'degradado';
+  access?: 'facil' | 'medio' | 'dificil';
+  height?: number;
+  finishStandard?: 'baixo' | 'medio' | 'alto';
 }
 
 export interface GeneratedBudget {

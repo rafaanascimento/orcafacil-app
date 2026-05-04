@@ -155,7 +155,7 @@ export const calculateBudget = ({
       `Fator técnico aplicado uma única vez: ${factor} (condição ${conditionMultiplier} × acesso ${accessMultiplier} × acabamento ${standardMultiplier} × complexidade ${technicalComplexityMultiplier} × altura ${heightMultiplier}).`,
       `BDI aplicado: ${bdiFactor} (25%).`,
       'Estimativa preliminar sujeita a vistoria técnica e ajustes executivos.',
-      'Campos prontos para persistência futura: material_subtotal, labor_subtotal, total_cost.',
+      'Campos prontos para persistência futura: material_cost, labor_cost, total_cost.',
     ],
   };
 };

@@ -102,8 +102,8 @@ export const BudgetForm = () => {
     const { error: saveError } = await supabase.from('budgets').insert({
       ...basePayload,
       pricing_json: budget.pricing,
-      material_subtotal: budget.pricing.materialSubtotal,
-      labor_subtotal: budget.pricing.laborSubtotal,
+      material_cost: budget.pricing.materialSubtotal,
+      labor_cost: budget.pricing.laborSubtotal,
       mobilization_cost: budget.pricing.mobilizationCost,
       additional_cost: budget.pricing.additionalCost,
       total_cost: budget.pricing.totalCost,

@@ -1,5 +1,6 @@
+import { compositions } from '@/data/costs/compositions';
+import { laborDatabase, materialsDatabase } from '@/data/costs/inputs';
 import { baseMobilizationCosts } from '@/data/pricing/base-costs';
-import { categoryCompositions } from '@/data/pricing/compositions';
 import type {
   AccessType,
   BudgetCategory,
@@ -7,7 +8,6 @@ import type {
   LaborItem,
   MaterialItem,
   PricingResult,
-  TechnicalBudgetCategory,
 } from '@/types/budget';
 import { round2, safeNumber } from './helpers';
 
@@ -23,34 +23,26 @@ interface CalculateBudgetInput {
   finishStandard?: 'baixo' | 'medio' | 'alto';
 }
 
+// 🔧 Fatores técnicos
 const surfaceFactor = { novo: 1, regular: 1.2, degradado: 1.5 } as const;
 const accessFactor = { facil: 1, medio: 1.15, dificil: 1.3 } as const;
 const finishFactor = { baixo: 0.9, medio: 1, alto: 1.25 } as const;
 const complexityFactor = { baixa: 0.95, media: 1, alta: 1.2 } as const;
-const bdiFactor = 1.25;
 
-const materialsDatabase = {
-  tinta_latex: { code: 'tinta_latex', name: 'Tinta Látex Premium', unit: 'lata 18L', price: 285, coverage: 120 },
-  massa_corrida: { code: 'massa_corrida', name: 'Massa Corrida PVA', unit: 'saco 25kg', price: 68, consumption: 1.1 },
-} as const;
+const BDI = 1.25;
 
-const laborDatabase = {
-  pintor: { code: 'pintor', name: 'Pintor Profissional', unit: 'hora', costPerHour: 32, productivity: 7 },
-} as const;
+// 🔗 Mapeamento de categoria → composição
+const compositionByCategory: Partial<Record<BudgetCategory, keyof typeof compositions>> = {
+  pintura_interna: 'pintura_interna',
+  pintura_externa: 'fachada',
+  percussao_simples: 'percussao_simples',
+  percussao_irata: 'percussao_simples',
+  fachada_ceramica: 'fachada',
+  fachada_textura: 'fachada',
+  impermeabilizacao_reservatorio: 'fachada',
+};
 
-const technicalCategorySet = new Set<TechnicalBudgetCategory>([
-  'pintura_interna',
-  'pintura_externa',
-  'percussao_simples',
-  'percussao_irata',
-  'fachada_ceramica',
-  'fachada_textura',
-  'impermeabilizacao_reservatorio',
-]);
-
-const toTechnicalCategory = (category: BudgetCategory): TechnicalBudgetCategory | null =>
-  technicalCategorySet.has(category as TechnicalBudgetCategory) ? (category as TechnicalBudgetCategory) : null;
-
+// 🔒 fallback seguro
 const defaultPricingResult = (category: BudgetCategory): PricingResult => ({
   category,
   materials: [],
@@ -78,63 +70,87 @@ export const calculateBudget = ({
   height = 3,
   finishStandard = 'medio',
 }: CalculateBudgetInput): PricingResult => {
-  const technicalCategory = toTechnicalCategory(category);
-  if (!technicalCategory) return defaultPricingResult(category);
+  // 🧠 Seleção de composição
+  const compositionKey = compositionByCategory[category] ?? 'pintura_interna';
+  const composition = compositions[compositionKey];
+
+  if (!composition) return defaultPricingResult(category);
 
   const safeArea = safeNumber(area, 0.1);
-  const composition = categoryCompositions[technicalCategory];
 
+  // 📊 Fatores
   const conditionMultiplier = surfaceFactor[surfaceCondition];
   const accessMultiplier = accessFactor[access];
-  const standardMultiplier = finishFactor[finishStandard];
-  const technicalComplexityMultiplier = complexityFactor[complexity];
+  const finishMultiplier = finishFactor[finishStandard];
+  const complexityMultiplier = complexityFactor[complexity];
   const heightMultiplier = height > 3 ? 1.1 : 1;
+
   const factor = round2(
-    conditionMultiplier * accessMultiplier * standardMultiplier * technicalComplexityMultiplier * heightMultiplier,
+    conditionMultiplier *
+    accessMultiplier *
+    finishMultiplier *
+    complexityMultiplier *
+    heightMultiplier
   );
 
-  const materials: MaterialItem[] = [
-    {
-      code: materialsDatabase.tinta_latex.code,
-      name: materialsDatabase.tinta_latex.name,
-      unit: materialsDatabase.tinta_latex.unit,
-      quantity: round2(safeArea / materialsDatabase.tinta_latex.coverage),
-      unitCost: materialsDatabase.tinta_latex.price,
-      totalCost: 0,
-    },
-    {
-      code: materialsDatabase.massa_corrida.code,
-      name: materialsDatabase.massa_corrida.name,
-      unit: materialsDatabase.massa_corrida.unit,
-      quantity: round2((safeArea * materialsDatabase.massa_corrida.consumption) / 25),
-      unitCost: materialsDatabase.massa_corrida.price,
-      totalCost: 0,
-    },
-  ].map((item) => ({ ...item, totalCost: round2(item.quantity * item.unitCost) }));
+  // 🧱 Materiais
+  const materials: MaterialItem[] = composition.materials.map((item) => {
+    const material = materialsDatabase[item.ref];
 
-  const laborHours = round2(safeArea / laborDatabase.pintor.productivity);
-  const labor: LaborItem[] = [
-    {
-      code: laborDatabase.pintor.code,
-      name: laborDatabase.pintor.name,
-      unit: laborDatabase.pintor.unit,
-      quantity: laborHours,
-      unitCost: laborDatabase.pintor.costPerHour,
-      totalCost: round2(laborHours * laborDatabase.pintor.costPerHour),
-    },
-  ];
+    const quantity =
+      'coverage' in material
+        ? round2(safeArea / material.coverage)
+        : round2(safeArea * material.consumption);
 
-  const materialSubtotal = round2(materials.reduce((total, item) => total + item.totalCost, 0));
-  const laborSubtotal = round2(labor.reduce((total, item) => total + item.totalCost, 0));
-  const baseTotal = round2(materialSubtotal + laborSubtotal);
+    return {
+      code: item.ref,
+      name: material.name,
+      unit: material.unit,
+      quantity,
+      unitCost: material.price,
+      totalCost: round2(quantity * material.price),
+    };
+  });
 
-  const factorAdjustedTotal = round2(baseTotal * factor);
-  const totalWithBdi = round2(factorAdjustedTotal * bdiFactor);
+  // 👷 Mão de obra
+  const labor: LaborItem[] = composition.labor.map((item) => {
+    const ref = laborDatabase[item.ref];
 
-  const mobilizationKey = accessType ?? composition.defaultMobilization;
-  const mobilizationCost = mobilizationKey ? round2(baseMobilizationCosts[mobilizationKey]) : 0;
-  const contingencyCost = round2(baseTotal * 0.03);
-  const totalCost = round2(totalWithBdi + mobilizationCost);
+    const hours = round2(safeArea / ref.productivity);
+
+    return {
+      code: item.ref,
+      name: ref.name,
+      unit: 'hora',
+      quantity: hours,
+      unitCost: ref.costPerHour,
+      totalCost: round2(hours * ref.costPerHour),
+    };
+  });
+
+  // 💰 Subtotais
+  const materialSubtotal = round2(
+    materials.reduce((sum, item) => sum + item.totalCost, 0)
+  );
+
+  const laborSubtotal = round2(
+    labor.reduce((sum, item) => sum + item.totalCost, 0)
+  );
+
+  // 🚚 Mobilização
+  const baseMobilization =
+    'mobilization' in composition ? composition.mobilization ?? 0 : 0;
+
+  const mappedMobilization = accessType
+    ? round2(baseMobilizationCosts[accessType])
+    : 0;
+
+  const mobilizationCost = round2(mappedMobilization || baseMobilization);
+
+  // 📊 Total
+  const baseTotal = round2(materialSubtotal + laborSubtotal + mobilizationCost);
+
+  const totalCost = round2(baseTotal * factor * BDI);
 
   return {
     category,
@@ -143,19 +159,21 @@ export const calculateBudget = ({
     materialSubtotal,
     laborSubtotal,
     mobilizationCost,
-    complexityCost: round2(baseTotal * (technicalComplexityMultiplier - 1)),
+
+    complexityCost: round2(baseTotal * (complexityMultiplier - 1)),
     accessCost: round2(baseTotal * (accessMultiplier - 1)),
-    contingencyCost,
+    contingencyCost: round2(baseTotal * 0.03),
+
     minimumAdjustment: 0,
     additionalCost: round2(totalCost - baseTotal),
     totalCost,
+
     notes: [
-      ...composition.notes,
+      `Composição aplicada: ${compositionKey}.`,
       `Tipo de imóvel: ${propertyType ?? 'não informado'}.`,
-      `Fator técnico aplicado uma única vez: ${factor} (condição ${conditionMultiplier} × acesso ${accessMultiplier} × acabamento ${standardMultiplier} × complexidade ${technicalComplexityMultiplier} × altura ${heightMultiplier}).`,
-      `BDI aplicado: ${bdiFactor} (25%).`,
-      'Estimativa preliminar sujeita a vistoria técnica e ajustes executivos.',
-      'Campos prontos para persistência futura: material_cost, labor_cost, total_cost.',
+      `Fator técnico: ${factor}.`,
+      `BDI aplicado: ${BDI} (25%).`,
+      'Estimativa preliminar sujeita à validação técnica.',
     ],
   };
 };

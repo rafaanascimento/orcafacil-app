@@ -23,13 +23,16 @@ interface CalculateBudgetInput {
   finishStandard?: 'baixo' | 'medio' | 'alto';
 }
 
+// 🔧 Fatores técnicos
 const surfaceFactor = { novo: 1, regular: 1.2, degradado: 1.5 } as const;
 const accessFactor = { facil: 1, medio: 1.15, dificil: 1.3 } as const;
 const finishFactor = { baixo: 0.9, medio: 1, alto: 1.25 } as const;
 const complexityFactor = { baixa: 0.95, media: 1, alta: 1.2 } as const;
-const bdi = 1.25;
 
-const compositionByCategory = {
+const BDI = 1.25;
+
+// 🔗 Mapeamento de categoria → composição
+const compositionByCategory: Partial<Record<BudgetCategory, keyof typeof compositions>> = {
   pintura_interna: 'pintura_interna',
   pintura_externa: 'fachada',
   percussao_simples: 'percussao_simples',
@@ -37,8 +40,9 @@ const compositionByCategory = {
   fachada_ceramica: 'fachada',
   fachada_textura: 'fachada',
   impermeabilizacao_reservatorio: 'fachada',
-} as const satisfies Partial<Record<BudgetCategory, keyof typeof compositions>>;
+};
 
+// 🔒 fallback seguro
 const defaultPricingResult = (category: BudgetCategory): PricingResult => ({
   category,
   materials: [],
@@ -66,32 +70,37 @@ export const calculateBudget = ({
   height = 3,
   finishStandard = 'medio',
 }: CalculateBudgetInput): PricingResult => {
-  const compositionKey =
-    category in compositionByCategory
-      ? compositionByCategory[category as keyof typeof compositionByCategory]
-      : 'pintura_interna';
+  // 🧠 Seleção de composição
+  const compositionKey = compositionByCategory[category] ?? 'pintura_interna';
   const composition = compositions[compositionKey];
 
   if (!composition) return defaultPricingResult(category);
 
   const safeArea = safeNumber(area, 0.1);
-  const composition = categoryCompositions[technicalCategory];
 
+  // 📊 Fatores
   const conditionMultiplier = surfaceFactor[surfaceCondition];
   const accessMultiplier = accessFactor[access];
-  const standardMultiplier = finishFactor[finishStandard];
-  const technicalComplexityMultiplier = complexityFactor[complexity];
+  const finishMultiplier = finishFactor[finishStandard];
+  const complexityMultiplier = complexityFactor[complexity];
   const heightMultiplier = height > 3 ? 1.1 : 1;
+
   const factor = round2(
-    conditionMultiplier * accessMultiplier * standardMultiplier * technicalComplexityMultiplier * heightMultiplier,
+    conditionMultiplier *
+    accessMultiplier *
+    finishMultiplier *
+    complexityMultiplier *
+    heightMultiplier
   );
 
+  // 🧱 Materiais
   const materials: MaterialItem[] = composition.materials.map((item) => {
     const material = materialsDatabase[item.ref];
 
-    const quantity = 'coverage' in material
-      ? round2(safeArea / material.coverage)
-      : round2(safeArea * material.consumption);
+    const quantity =
+      'coverage' in material
+        ? round2(safeArea / material.coverage)
+        : round2(safeArea * material.consumption);
 
     return {
       code: item.ref,
@@ -103,29 +112,45 @@ export const calculateBudget = ({
     };
   });
 
+  // 👷 Mão de obra
   const labor: LaborItem[] = composition.labor.map((item) => {
-    const laborRef = laborDatabase[item.ref];
-    const hours = round2(safeArea / laborRef.productivity);
+    const ref = laborDatabase[item.ref];
+
+    const hours = round2(safeArea / ref.productivity);
 
     return {
       code: item.ref,
-      name: laborRef.name,
+      name: ref.name,
       unit: 'hora',
       quantity: hours,
-      unitCost: laborRef.costPerHour,
-      totalCost: round2(hours * laborRef.costPerHour),
+      unitCost: ref.costPerHour,
+      totalCost: round2(hours * ref.costPerHour),
     };
   });
 
-  const materialSubtotal = round2(materials.reduce((total, item) => total + item.totalCost, 0));
-  const laborSubtotal = round2(labor.reduce((total, item) => total + item.totalCost, 0));
+  // 💰 Subtotais
+  const materialSubtotal = round2(
+    materials.reduce((sum, item) => sum + item.totalCost, 0)
+  );
 
-  const defaultMobilization = 'mobilization' in composition ? composition.mobilization : 0;
-  const mappedMobilization = accessType ? round2(baseMobilizationCosts[accessType]) : 0;
-  const mobilizationCost = round2(mappedMobilization || defaultMobilization);
+  const laborSubtotal = round2(
+    labor.reduce((sum, item) => sum + item.totalCost, 0)
+  );
 
+  // 🚚 Mobilização
+  const baseMobilization =
+    'mobilization' in composition ? composition.mobilization ?? 0 : 0;
+
+  const mappedMobilization = accessType
+    ? round2(baseMobilizationCosts[accessType])
+    : 0;
+
+  const mobilizationCost = round2(mappedMobilization || baseMobilization);
+
+  // 📊 Total
   const baseTotal = round2(materialSubtotal + laborSubtotal + mobilizationCost);
-  const totalCost = round2(baseTotal * factor * bdi);
+
+  const totalCost = round2(baseTotal * factor * BDI);
 
   return {
     category,
@@ -134,19 +159,21 @@ export const calculateBudget = ({
     materialSubtotal,
     laborSubtotal,
     mobilizationCost,
-    complexityCost: round2(baseTotal * (technicalComplexityMultiplier - 1)),
+
+    complexityCost: round2(baseTotal * (complexityMultiplier - 1)),
     accessCost: round2(baseTotal * (accessMultiplier - 1)),
     contingencyCost: round2(baseTotal * 0.03),
+
     minimumAdjustment: 0,
     additionalCost: round2(totalCost - baseTotal),
     totalCost,
+
     notes: [
       `Composição aplicada: ${compositionKey}.`,
       `Tipo de imóvel: ${propertyType ?? 'não informado'}.`,
-      `Fator técnico único: ${factor} (condição ${conditionMultiplier} × acesso ${accessMultiplier} × acabamento ${standardMultiplier} × complexidade ${technicalComplexityMultiplier} × altura ${heightMultiplier}).`,
-      `BDI aplicado: ${bdi} (25%).`,
-      'Estimativa técnica preliminar sujeita à vistoria para fechamento executivo.',
-      'Campos de persistência utilizados: material_cost, labor_cost, total_cost.',
+      `Fator técnico: ${factor}.`,
+      `BDI aplicado: ${BDI} (25%).`,
+      'Estimativa preliminar sujeita à validação técnica.',
     ],
   };
 };

@@ -50,9 +50,23 @@ export const generateBudget = ({
   description,
   area,
   complexity,
+  propertyType,
+  surfaceCondition,
+  access,
+  height,
+  finishStandard,
 }: GenerateBudgetInput): GeneratedBudget => {
   const category = classifyBudgetCategory(description);
-  const pricing = calculateBudget({ category, area, complexity });
+  const pricing = calculateBudget({
+    category,
+    area,
+    complexity,
+    propertyType,
+    surfaceCondition,
+    access,
+    height,
+    finishStandard,
+  });
 
   if (isTechnicalCategory(category)) {
     const profile = familyProfiles[category];

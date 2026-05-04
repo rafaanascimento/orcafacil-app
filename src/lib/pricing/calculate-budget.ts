@@ -75,6 +75,7 @@ export const calculateBudget = ({
   if (!composition) return defaultPricingResult(category);
 
   const safeArea = safeNumber(area, 0.1);
+  const composition = categoryCompositions[technicalCategory];
 
   const conditionMultiplier = surfaceFactor[surfaceCondition];
   const accessMultiplier = accessFactor[access];

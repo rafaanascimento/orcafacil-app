@@ -1,29 +1,98 @@
-import { baseLaborCosts, baseMaterialCosts, baseMobilizationCosts } from '@/data/pricing/base-costs';
-import { categoryCompositions, complexityFactor } from '@/data/pricing/compositions';
-import type { AccessType, BudgetCategory, BudgetComplexity, LaborItem, MaterialItem, PricingResult, TechnicalBudgetCategory } from '@/types/budget';
-import { daysFromProductivity, round2, safeNumber } from './helpers';
+import { compositions } from '@/data/costs/compositions';
+import { laborDatabase, materialsDatabase } from '@/data/costs/inputs';
+import { baseMobilizationCosts } from '@/data/pricing/base-costs';
+import type {
+  AccessType,
+  BudgetCategory,
+  BudgetComplexity,
+  LaborItem,
+  MaterialItem,
+  PricingResult,
+} from '@/types/budget';
+import { round2, safeNumber } from './helpers';
 
 interface CalculateBudgetInput {
   category: BudgetCategory;
   area: number;
   complexity: BudgetComplexity;
   accessType?: AccessType;
+  propertyType?: 'residencial' | 'comercial';
+  surfaceCondition?: 'novo' | 'regular' | 'degradado';
+  access?: 'facil' | 'medio' | 'dificil';
+  height?: number;
+  finishStandard?: 'baixo' | 'medio' | 'alto';
 }
 
-const technicalCategorySet = new Set<TechnicalBudgetCategory>([
-  'pintura_interna',
-  'pintura_externa',
-  'percussao_simples',
-  'percussao_irata',
-  'fachada_ceramica',
-  'fachada_textura',
-  'impermeabilizacao_reservatorio',
-]);
+const surfaceFactor = { novo: 1, regular: 1.2, degradado: 1.5 } as const;
+const accessFactor = { facil: 1, medio: 1.15, dificil: 1.3 } as const;
+const finishFactor = { baixo: 0.9, medio: 1, alto: 1.25 } as const;
+const complexityFactor = { baixa: 0.95, media: 1, alta: 1.2 } as const;
+const bdi = 1.25;
 
-const toTechnicalCategory = (category: BudgetCategory): TechnicalBudgetCategory | null =>
-  technicalCategorySet.has(category as TechnicalBudgetCategory)
-    ? (category as TechnicalBudgetCategory)
-    : null;
+const compositionByCategory = {
+  pintura_interna: 'pintura_interna',
+  pintura_externa: 'fachada',
+  percussao_simples: 'percussao_simples',
+  percussao_irata: 'percussao_simples',
+  fachada_ceramica: 'fachada',
+  fachada_textura: 'fachada',
+  impermeabilizacao_reservatorio: 'fachada',
+} as const satisfies Partial<Record<BudgetCategory, keyof typeof compositions>>;
+
+
+const calculatePercussionBudget = ({
+  category,
+  area,
+  propertyType,
+  access = 'facil',
+  height = 3,
+}: Pick<CalculateBudgetInput, 'category' | 'area' | 'propertyType' | 'access' | 'height'>): PricingResult => {
+  const safeArea = safeNumber(area, 0.1);
+  const technicalProductivity = 20;
+  const technicalCostPerHour = 80;
+  const reportCost = 200;
+
+  const mobilizationCost = propertyType === 'comercial' ? 300 : 150;
+  const accessMultiplier = access === 'dificil' ? 1.3 : access === 'medio' ? 1.15 : 1;
+  const heightMultiplier = height > 20 ? 1.4 : height > 10 ? 1.2 : 1;
+
+  const hours = round2(safeArea / technicalProductivity);
+  const laborSubtotal = round2(hours * technicalCostPerHour);
+  const materialSubtotal = 0;
+  const baseTotal = round2(laborSubtotal + mobilizationCost + reportCost);
+  const totalCost = round2(baseTotal * accessMultiplier * heightMultiplier);
+
+  return {
+    category,
+    materials: [],
+    labor: [
+      {
+        code: 'tecnico',
+        name: 'Técnico de inspeção',
+        unit: 'hora',
+        quantity: hours,
+        unitCost: technicalCostPerHour,
+        totalCost: laborSubtotal,
+      },
+    ],
+    materialSubtotal,
+    laborSubtotal,
+    mobilizationCost,
+    complexityCost: 0,
+    accessCost: round2(baseTotal * (accessMultiplier - 1)),
+    contingencyCost: 0,
+    minimumAdjustment: 0,
+    additionalCost: round2(totalCost - baseTotal),
+    totalCost,
+    notes: [
+      'Serviço técnico especializado — não baseado em consumo de materiais.',
+      `Produtividade aplicada: ${technicalProductivity} m²/h por técnico (1 técnico).`,
+      `Custos fixos aplicados — Mobilização: R$ ${mobilizationCost.toFixed(2)}, Laudo técnico: R$ ${reportCost.toFixed(2)}.`,
+      `Multiplicadores aplicados — Acesso (${access}: ${accessMultiplier}) e Altura (${height}m: ${heightMultiplier}).`,
+      'Campos de persistência utilizados: material_cost, labor_cost, total_cost.',
+    ],
+  };
+};
 
 const defaultPricingResult = (category: BudgetCategory): PricingResult => ({
   category,
@@ -46,86 +115,96 @@ export const calculateBudget = ({
   area,
   complexity,
   accessType,
+  propertyType,
+  surfaceCondition = 'regular',
+  access = 'facil',
+  height = 3,
+  finishStandard = 'medio',
 }: CalculateBudgetInput): PricingResult => {
-  const technicalCategory = toTechnicalCategory(category);
-  const safeArea = safeNumber(area, 0.1);
-
-  if (!technicalCategory) {
-    return defaultPricingResult(category);
+  if (category === 'percussao_simples') {
+    return calculatePercussionBudget({ category, area, propertyType, access, height });
   }
 
-  const composition = categoryCompositions[technicalCategory];
-  const complexityMultiplier = complexityFactor[complexity];
+  const compositionKey =
+    category in compositionByCategory
+      ? compositionByCategory[category as keyof typeof compositionByCategory]
+      : 'pintura_interna';
+  const composition = compositions[compositionKey];
 
-  const materialItems: MaterialItem[] = composition.materials.map((item) => {
-    const costRef = baseMaterialCosts[item.code as keyof typeof baseMaterialCosts];
-    const quantity = round2(safeArea * item.consumptionPerM2);
-    const totalCost = round2(quantity * costRef.unitCost);
+  if (!composition) return defaultPricingResult(category);
 
-    return {
-      code: item.code,
-      name: costRef.name,
-      unit: costRef.unit,
-      quantity,
-      unitCost: costRef.unitCost,
-      totalCost,
-    };
-  });
+  const safeArea = safeNumber(area, 0.1);
 
-  const laborItems: LaborItem[] = composition.labor.map((item) => {
-    const costRef = baseLaborCosts[item.code as keyof typeof baseLaborCosts];
-    const days = item.fixedDays ?? daysFromProductivity(safeArea, item.productivityM2PerDay);
-    const quantity = round2(days);
-    const totalCost = round2(quantity * costRef.unitCost);
-
-    return {
-      code: item.code,
-      name: costRef.name,
-      unit: costRef.unit,
-      quantity,
-      unitCost: costRef.unitCost,
-      totalCost,
-    };
-  });
-
-  const materialSubtotal = round2(materialItems.reduce((sum, item) => sum + item.totalCost, 0));
-  const laborSubtotal = round2(laborItems.reduce((sum, item) => sum + item.totalCost, 0));
-
-  const mobilizationKey = accessType ?? composition.defaultMobilization;
-  const mobilizationCost = mobilizationKey ? round2(baseMobilizationCosts[mobilizationKey]) : 0;
-
-  const complexityCost = round2((materialSubtotal + laborSubtotal) * (complexityMultiplier - 1));
-  const accessCost = composition.accessAdditionalByM2 ? round2(safeArea * composition.accessAdditionalByM2) : 0;
-  const contingencyCost = round2((materialSubtotal + laborSubtotal) * 0.03);
-
-  const baseTotal = round2(
-    materialSubtotal + laborSubtotal + mobilizationCost + complexityCost + accessCost + contingencyCost,
+  const conditionMultiplier = surfaceFactor[surfaceCondition];
+  const accessMultiplier = accessFactor[access];
+  const standardMultiplier = finishFactor[finishStandard];
+  const technicalComplexityMultiplier = complexityFactor[complexity];
+  const heightMultiplier = height > 3 ? 1.1 : 1;
+  const factor = round2(
+    conditionMultiplier * accessMultiplier * standardMultiplier * technicalComplexityMultiplier * heightMultiplier,
   );
 
-  const minimumAdjustment = composition.minCost ? round2(Math.max(composition.minCost - baseTotal, 0)) : 0;
-  const additionalCost = round2(complexityCost + accessCost + contingencyCost + minimumAdjustment);
-  const totalCost = round2(materialSubtotal + laborSubtotal + mobilizationCost + additionalCost);
+  const materials: MaterialItem[] = composition.materials.map((item) => {
+    const material = materialsDatabase[item.ref];
+
+    const quantity = 'coverage' in material
+      ? round2(safeArea / material.coverage)
+      : round2(safeArea * material.consumption);
+
+    return {
+      code: item.ref,
+      name: material.name,
+      unit: material.unit,
+      quantity,
+      unitCost: material.price,
+      totalCost: round2(quantity * material.price),
+    };
+  });
+
+  const labor: LaborItem[] = composition.labor.map((item) => {
+    const laborRef = laborDatabase[item.ref];
+    const hours = round2(safeArea / laborRef.productivity);
+
+    return {
+      code: item.ref,
+      name: laborRef.name,
+      unit: 'hora',
+      quantity: hours,
+      unitCost: laborRef.costPerHour,
+      totalCost: round2(hours * laborRef.costPerHour),
+    };
+  });
+
+  const materialSubtotal = round2(materials.reduce((total, item) => total + item.totalCost, 0));
+  const laborSubtotal = round2(labor.reduce((total, item) => total + item.totalCost, 0));
+
+  const defaultMobilization = 'mobilization' in composition ? composition.mobilization : 0;
+  const mappedMobilization = accessType ? round2(baseMobilizationCosts[accessType]) : 0;
+  const mobilizationCost = round2(mappedMobilization || defaultMobilization);
+
+  const baseTotal = round2(materialSubtotal + laborSubtotal + mobilizationCost);
+  const totalCost = round2(baseTotal * factor * bdi);
 
   return {
     category,
-    materials: materialItems,
-    labor: laborItems,
+    materials,
+    labor,
     materialSubtotal,
     laborSubtotal,
     mobilizationCost,
-    complexityCost,
-    accessCost,
-    contingencyCost,
-    minimumAdjustment,
-    additionalCost,
+    complexityCost: round2(baseTotal * (technicalComplexityMultiplier - 1)),
+    accessCost: round2(baseTotal * (accessMultiplier - 1)),
+    contingencyCost: round2(baseTotal * 0.03),
+    minimumAdjustment: 0,
+    additionalCost: round2(totalCost - baseTotal),
     totalCost,
     notes: [
-      ...composition.notes,
-      `Fator de complexidade aplicado: ${complexity} (${complexityMultiplier}).`,
-      `Adicionais detalhados — Complexidade: R$ ${complexityCost.toFixed(2)}, Acesso: R$ ${accessCost.toFixed(2)}, Contingência: R$ ${contingencyCost.toFixed(2)}, Ajuste de mínimo: R$ ${minimumAdjustment.toFixed(2)}.`,
-      composition.minCost
-        ? `Custo mínimo operacional de referência: R$ ${composition.minCost.toFixed(2)}.`
-        : 'Sem custo mínimo obrigatório para esta categoria.',
+      `Composição aplicada: ${compositionKey}.`,
+      `Tipo de imóvel: ${propertyType ?? 'não informado'}.`,
+      `Fator técnico único: ${factor} (condição ${conditionMultiplier} × acesso ${accessMultiplier} × acabamento ${standardMultiplier} × complexidade ${technicalComplexityMultiplier} × altura ${heightMultiplier}).`,
+      `BDI aplicado: ${bdi} (25%).`,
+      'Estimativa técnica preliminar sujeita à vistoria para fechamento executivo.',
+      'Campos de persistência utilizados: material_cost, labor_cost, total_cost.',
     ],
   };
 };

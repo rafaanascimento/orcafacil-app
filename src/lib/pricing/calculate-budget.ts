@@ -94,6 +94,7 @@ const calculatePercussionBudget = ({
   };
 };
 
+// 🔒 fallback seguro
 const defaultPricingResult = (category: BudgetCategory): PricingResult => ({
   category,
   materials: [],
@@ -198,6 +199,7 @@ export const calculateBudget = ({
     minimumAdjustment: 0,
     additionalCost: round2(totalCost - baseTotal),
     totalCost,
+
     notes: [
       `Composição aplicada: ${compositionKey}.`,
       `Tipo de imóvel: ${propertyType ?? 'não informado'}.`,
